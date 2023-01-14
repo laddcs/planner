@@ -1,0 +1,12 @@
+<launch>
+    <arg name="fcu_url" default="udp://:14551@127.0.0.1:14551"/>
+    <arg name="gcs_url" default="" />
+
+    <include file="$(find mavros)/launch/px4.launch">
+        <arg name="fcu_url" value="$(arg fcu_url)" />
+        <arg name="gcs_url" value="$(arg gcs_url)" />
+    </include>
+
+    <node pkg="planner" type="commander_node" name="commander" output="screen"/>
+    <node pkg="planner" type="controller_node" name="controller" output="screen"/>
+</launch>
