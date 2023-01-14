@@ -40,12 +40,11 @@ void commander::home_cb(const mavros_msgs::HomePosition::ConstPtr& msg)
 
     map_origen_ << lat0, lon0, alt0;
 
-    ROS_INFO("Home Coordinates at: (%3f, %3f, %3f)", lat0, lon0, alt0);
-
     if(!home_set_)
     {
         home_set_ = true;
         ROS_INFO("Home Set!");
+        ROS_INFO("Home Coordinates at: (%3f, %3f, %3f)", lat0, lon0, alt0);
     }
 }
 
@@ -67,6 +66,7 @@ void commander::waypoint_cb(const mavros_msgs::WaypointList::ConstPtr& msg)
 void commander::cmdloop_cb(const ros::TimerEvent &event)
 {
     planner_msgs::CommandState cmd;
+    cmd.px4_state = current_state_.mode;
     cmd.has_goal = false;
     cmd.track_target = false;
 

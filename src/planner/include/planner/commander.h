@@ -20,14 +20,6 @@
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/Constants.hpp>
 
-enum class CMD_STATE
-{
-    IDLE,
-    PLANNING,
-    TRACK,
-    RC
-};
-
 class commander
 {
     private:
@@ -38,7 +30,9 @@ class commander
         ros::Subscriber home_sub_;
 
         ros::Publisher command_pub_;
+
         ros::ServiceClient set_mode_client_;
+        
         ros::Timer cmdloop_timer_;
 
         mavros_msgs::HomePosition current_home_;

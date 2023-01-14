@@ -24,7 +24,7 @@ add_message_files(
   CommandState.msg
 )
 
-generate_messages(DEPENDENCIES geometry_msgs std_msgs)
+generate_messages(DEPENDENCIES geometry_msgs mavros_msgs std_msgs)
 
 catkin_package(
   INCLUDE_DIRS include
