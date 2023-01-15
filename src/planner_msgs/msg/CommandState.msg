@@ -1,6 +1,7 @@
 std_msgs/Header Header
 
 geometry_msgs/Pose goal
+geometry_msgs/Pose start
 bool has_goal
 bool track_target
 string state

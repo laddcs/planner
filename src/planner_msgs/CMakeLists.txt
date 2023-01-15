@@ -4,9 +4,6 @@ project(planner_msgs)
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   mavros_msgs
@@ -22,6 +19,14 @@ add_message_files(
   DIRECTORY msg
   FILES
   CommandState.msg
+  PathSetpoint.msg
+  PathList.msg
+)
+
+add_service_files(
+  DIRECTORY srv
+  FILES
+  PlanPath.srv
 )
 
 generate_messages(DEPENDENCIES geometry_msgs mavros_msgs std_msgs)
