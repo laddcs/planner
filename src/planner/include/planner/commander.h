@@ -16,6 +16,7 @@
 #include <mavros_msgs/CommandCode.h>
 
 #include <planner_msgs/SetController.h>
+#include <planner_msgs/SetCommander.h>
 
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/Constants.hpp>
@@ -30,6 +31,7 @@ class commander
         ros::Subscriber home_sub_;
         ros::Subscriber pose_sub_;
 
+        ros::ServiceServer set_commander_;
         ros::ServiceClient set_mode_client_;
         ros::ServiceClient set_controller_client_;
         
@@ -56,6 +58,7 @@ class commander
         void home_cb(const mavros_msgs::HomePosition::ConstPtr& msg);
         void cmdloop_cb(const ros::TimerEvent &event);
         void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg);
+        bool set_commander_cb(planner_msgs::SetCommander::Request& request, planner_msgs::SetCommander::Response& response);
 
     public:
         commander(const ros::NodeHandle &nh);

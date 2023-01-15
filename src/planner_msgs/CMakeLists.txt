@@ -27,6 +27,7 @@ add_service_files(
   FILES
   PlanPath.srv
   SetController.srv
+  SetCommander.srv
 )
 
 generate_messages(DEPENDENCIES geometry_msgs mavros_msgs std_msgs)

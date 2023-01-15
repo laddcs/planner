@@ -2,6 +2,7 @@
 
 #include <planner/common.h>
 #include <planner_msgs/SetController.h>
+#include <planner_msgs/SetCommander.h>
 
 #include <geometry_msgs/PoseStamped.h>
 
@@ -21,6 +22,7 @@ class controller
 
         ros::Timer controller_timer_;
 
+        ros::ServiceClient set_commander_client_;
         ros::ServiceClient set_mode_client_;
         ros::ServiceServer set_controller_;
 

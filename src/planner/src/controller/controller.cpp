@@ -10,6 +10,7 @@ controller::controller(const ros::NodeHandle &nh) : nh_(nh)
     controller_timer_ = nh_.createTimer(ros::Duration(0.1), &controller::controller_cb, this);
 
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
+    set_commander_client_ = nh_.serviceClient<planner_msgs::SetCommander>("commander/set_commander");
     set_controller_ = nh_.advertiseService("controller/set_controller", &controller::set_controller_cb, this);
 
     last_request = ros::Time::now();
@@ -31,25 +32,10 @@ bool controller::set_controller_cb(planner_msgs::SetController::Request& request
         return true;
     }
 
-    if(request.track)
-    {
-        plan_ = request.plan;
-        track_ = request.track;
+    plan_ = request.plan;
+    track_ = request.track;
 
-        response.success = true;
-
-        return true;
-    }
-
-    if(!request.plan && !request.track)
-    {
-        plan_ = request.plan;
-        plan_ = request.track;
-
-        response.success = true;
-
-        return true;
-    }
+    response.success = true;
 
     return false;
 }
@@ -71,7 +57,15 @@ void controller::controller_cb(const ros::TimerEvent& event)
 {
     if(plan_)
     {
-
+        // call plan service here
+        planner_msgs::SetCommander set_commander;
+        set_commander.request.has_plan = true;
+        set_commander.request.track_complete = false;
+        if(set_commander_client_.call(set_commander) && set_commander.response.success)
+        {
+            ROS_INFO("Planning Successful!");
+            plan_ = false;
+        }
     }
 
     if(track_)

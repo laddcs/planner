@@ -7,6 +7,7 @@ commander::commander(const ros::NodeHandle &nh) : nh_(nh)
     home_sub_ = nh_.subscribe("mavros/home_position/home", 1, &commander::home_cb, this);
     pose_sub_ = nh_.subscribe("mavroslocal_position/pose", 1, &commander::pose_cb, this);
 
+    set_commander_ = nh_.advertiseService("commander/set_commander", &commander::set_commander_cb, this);
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
     set_controller_client_ = nh_.serviceClient<planner_msgs::SetController>("controller/set_controller");
 
@@ -14,7 +15,7 @@ commander::commander(const ros::NodeHandle &nh) : nh_(nh)
 
     home_set_ = false;
     has_goal_ = false;
-    
+
     has_plan_ = false;
     track_complete_ = false;
 
@@ -68,6 +69,14 @@ void commander::waypoint_cb(const mavros_msgs::WaypointList::ConstPtr& msg)
 void commander::pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_pose_ = (*msg).pose;
+}
+
+bool commander::set_commander_cb(planner_msgs::SetCommander::Request& request, planner_msgs::SetCommander::Response& response)
+{
+    has_plan_ = request.has_plan;
+    track_complete_ = request.track_complete;
+    response.success = true;
+    return true;
 }
 
 void commander::cmdloop_cb(const ros::TimerEvent &event)
