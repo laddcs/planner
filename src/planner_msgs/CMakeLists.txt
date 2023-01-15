@@ -18,7 +18,6 @@ include_directories(include)
 add_message_files(
   DIRECTORY msg
   FILES
-  CommandState.msg
   PathSetpoint.msg
   PathList.msg
 )
@@ -27,6 +26,7 @@ add_service_files(
   DIRECTORY srv
   FILES
   PlanPath.srv
+  SetController.srv
 )
 
 generate_messages(DEPENDENCIES geometry_msgs mavros_msgs std_msgs)

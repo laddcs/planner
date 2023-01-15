@@ -2,21 +2,56 @@
 
 controller::controller(const ros::NodeHandle &nh) : nh_(nh)
 {
-    cmd_sub_ = nh_.subscribe("commander/state", 1, &controller::cmd_msg_cb, this);
     setpoint_sub_ = nh_.subscribe("mavros/setpoint_raw/target_local", 1, &controller::setpoint_cb, this);
+    state_sub_ = nh_.subscribe("mavros/state", 1, &controller::state_cb, this);
 
     setpoint_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
 
     controller_timer_ = nh_.createTimer(ros::Duration(0.1), &controller::controller_cb, this);
 
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
+    set_controller_ = nh_.advertiseService("controller/set_controller", &controller::set_controller_cb, this);
 
     last_request = ros::Time::now();
+
+    plan_ = false;
+    track_ = false;
 }
 
-void controller::cmd_msg_cb(const planner_msgs::CommandState::ConstPtr& msg)
+bool controller::set_controller_cb(planner_msgs::SetController::Request& request, planner_msgs::SetController::Response& response)
 {
-    current_cmd_ = *msg;
+    if(request.plan)
+    {
+        start_ = request.start;
+        goal_ = request.goal;
+        plan_ = request.plan;
+
+        response.success = true;
+
+        return true;
+    }
+
+    if(request.track)
+    {
+        plan_ = request.plan;
+        track_ = request.track;
+
+        response.success = true;
+
+        return true;
+    }
+
+    if(!request.plan && !request.track)
+    {
+        plan_ = request.plan;
+        plan_ = request.track;
+
+        response.success = true;
+
+        return true;
+    }
+
+    return false;
 }
 
 void controller::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
@@ -27,11 +62,21 @@ void controller::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
     current_px4_setpoint_.pose.orientation = euler2Quat(0, 0, (*msg).yaw);
 }
 
+void controller::state_cb(const mavros_msgs::State::ConstPtr& msg)
+{
+    current_state_ = *msg;
+}
+
 void controller::controller_cb(const ros::TimerEvent& event)
 {
-    if(current_cmd_.state == planner_msgs::CommandState::PLANNING)
+    if(plan_)
     {
-        if((current_cmd_.px4_state != mavros_msgs::State::MODE_PX4_OFFBOARD) && ((ros::Time::now() - last_request) > ros::Duration(5.0)))
+
+    }
+
+    if(track_)
+    {
+        if((current_state_.mode != mavros_msgs::State::MODE_PX4_OFFBOARD) && ((ros::Time::now() - last_request) > ros::Duration(5.0)))
         {
             mavros_msgs::SetMode offb_set_mode;
             offb_set_mode.request.custom_mode = "OFFBOARD";
