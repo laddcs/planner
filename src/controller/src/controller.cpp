@@ -1,4 +1,4 @@
-#include <planner/controller.h>
+#include <controller/controller.h>
 
 controller::controller(const ros::NodeHandle &nh) : nh_(nh)
 {

@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 
-#include <planner/common.h>
+#include <controller/common.h>
+
 #include <planner_msgs/SetController.h>
 #include <planner_msgs/SetCommander.h>
 

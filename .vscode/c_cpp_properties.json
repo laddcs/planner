@@ -8,6 +8,8 @@
             "includePath": [
                 "/opt/ros/noetic/include/**",
                 "/home/bryce/gnc_ws/src/planner/include/**",
+                "/home/bryce/gnc_ws/src/commander/include/**",
+                "/home/bryce/gnc_ws/src/controller/include/**",
                 "/usr/include/**",
                 "${workspaceFolder}/devel/.private/planner_msgs/include"
             ],

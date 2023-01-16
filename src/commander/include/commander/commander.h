@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include <planner/common.h>
-
 #include <geometry_msgs/PoseStamped.h>
 
 #include <mavros/frame_tf.h>
@@ -20,6 +18,8 @@
 
 #include <GeographicLib/Geocentric.hpp>
 #include <GeographicLib/Constants.hpp>
+
+#include "commander/common.h"
 
 class commander
 {
