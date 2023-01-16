@@ -6,3 +6,4 @@ planner
 /home/bryce/gnc_ws/devel/.private/planner/lib/pkgconfig/planner.pc /home/bryce/gnc_ws/devel/lib/pkgconfig/planner.pc
 /home/bryce/gnc_ws/devel/.private/planner/lib/planner/commander_node /home/bryce/gnc_ws/devel/lib/planner/commander_node
 /home/bryce/gnc_ws/devel/.private/planner/lib/planner/controller_node /home/bryce/gnc_ws/devel/lib/planner/controller_node
+/home/bryce/gnc_ws/devel/.private/planner/lib/planner/planner_node /home/bryce/gnc_ws/devel/lib/planner/planner_node

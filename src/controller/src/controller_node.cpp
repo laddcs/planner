@@ -1,11 +1,11 @@
-#include "planner/commander.h"
+#include <controller/controller.h>
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "commander_node");
     ros::NodeHandle nh("");
 
-    commander* C = new commander(nh);
+    controller* C = new controller(nh);
 
     ros::spin();
     return 0;

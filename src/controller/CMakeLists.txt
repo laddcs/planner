@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(planner)
+project(controller)
 
 find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES planner
+  LIBRARIES controller
   CATKIN_DEPENDS dynamic_reconfigure mavros mavros_msgs geometry_msgs roscpp std_msgs planner_msgs tf
 )
 
@@ -29,20 +29,19 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-  src/planner.cpp
-  src/hybrid_astar.cpp
+  src/controller.cpp
 )
 
-add_dependencies(planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 ############
 # BINARIES #
 ############
-add_executable(planner_node
-  src/planner_node.cpp
+add_executable(controller_node
+  src/controller_node.cpp
 )
 
-add_dependencies(planner_node planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(controller_node controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(planner_node planner ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(controller_node controller ${PROJECT_NAME} ${catkin_LIBRARIES})

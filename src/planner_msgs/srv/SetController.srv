@@ -1,0 +1,6 @@
+geometry_msgs/Pose start
+geometry_msgs/Pose goal
+bool plan
+bool track
+---
+bool success
