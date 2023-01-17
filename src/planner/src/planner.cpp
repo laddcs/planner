@@ -13,7 +13,7 @@ planner::planner(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private) :
 
     if(planner_type_ == "hybrid-astar")
     {
-        planner_algorithm_ = std::make_shared<hybrid_astar>();
+        planner_algorithm_ = std::make_shared<hybrid_astar>(speed_, R_, L_);
     }
 }
 

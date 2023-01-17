@@ -4,14 +4,6 @@
 
 #include <Eigen/Dense>
 
-enum class CMD_STATE
-{
-    IDLE,
-    PLANNING,
-    TRACK,
-    RC
-};
-
 inline Eigen::Vector3d toEigen(const geometry_msgs::Point &p) 
 {
   Eigen::Vector3d ev3(p.x, p.y, p.z);
