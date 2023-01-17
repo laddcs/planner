@@ -1,5 +1,3 @@
-#include <Eigen/Dense>
-
 class planner_algorithm
 {
     public:
