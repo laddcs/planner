@@ -1,15 +1,18 @@
 #include <planner/planner_algorithm.h>
 
+#include <iostream>
 #include <vector>
 #include <math.h>
+#include <boost/heap/fibonacci_heap.hpp>
 #include <Eigen/Dense>
 
 // Dubins motion primitive types
-enum class PRIMITIVE
+enum PRIMITIVE
 {
     TURN_UP,
     TURN_DOWN,
-    GO_STRAIGHT
+    GO_STRAIGHT,
+    START
 };
 
 // Domain boundary data -> rescaled to start / goal + domain_buffer
@@ -33,6 +36,14 @@ struct motion_primitive
     PRIMITIVE aci;
 };
 
+struct compare_primitive
+{
+    bool operator()(const motion_primitive& node1, const motion_primitive& node2) const
+    {
+        return node1.starcost > node2.starcost;
+    }
+};
+
 // Data required for visited set
 struct visited_node
 {
@@ -43,45 +54,6 @@ struct visited_node
     int parent_idx;
     PRIMITIVE parent_aci;
 };
-
-// Here be bugs
-inline int get_idx(std::vector<double>* grid_x, std::vector<double>* grid_y, std::vector<double>* grid_th, Eigen::Vector3d pos)
-{
-    int x_idx = 0;
-    int y_idx = 0;
-    int th_idx = 0;
-
-    double xmin = std::abs(grid_x->at(0) - pos(0));
-    double ymin = std::abs(grid_y->at(0) - pos(1));
-    double thmin = std::abs(grid_th->at(0) - pos(2));
-
-    for(int i = 1; i < grid_x->size(); i++)
-    {
-        if(std::abs(grid_x->at(i) - pos(0)) <= xmin)
-        {
-            xmin = std::abs(grid_x->at(i) - pos(0));
-            x_idx = i;
-        }
-    }
-    for(int i = 1; i < grid_y->size(); i++)
-    {
-        if(std::abs(grid_y->at(i) - pos(1)) <= ymin)
-        {
-            ymin = std::abs(grid_y->at(i) - pos(1));
-            y_idx = i;
-        }
-    }
-    for(int i = 1; i < grid_th->size(); i++)
-    {
-        if(std::abs(grid_th->at(i) - pos(2)) <= thmin)
-        {
-            thmin = std::abs(grid_th->at(i) - pos(2));
-            th_idx = i;
-        }
-    }
-    
-    return th_idx*(grid_x->size())*(grid_y->size()) + y_idx*(grid_x->size()) + x_idx;
-}
 
 class hybrid_astar : public planner_algorithm
 {
@@ -107,11 +79,28 @@ class hybrid_astar : public planner_algorithm
         std::vector<double> grid_th_;
 
         std::vector<visited_node> visited_;
+        boost::heap::fibonacci_heap<motion_primitive, boost::heap::compare<compare_primitive>> frontier_;
+
+        motion_primitive current_;
+
+        int get_idx(Eigen::Vector3d pos);
+        double heuristic(Eigen::Vector3d pos);
+        bool new_node(motion_primitive* node, motion_primitive* parent, PRIMITIVE aci);
 
     public:
         bool setup(Eigen::Vector3d start, Eigen::Vector3d goal, double domain_buffer);
         bool plan();
+        std::vector<visited_node> get_path();
 
         hybrid_astar(double speed, double turn_radius, double step_length);
         virtual ~hybrid_astar();
+
+        // Getter methods for testing
+        double get_dom_xmin();
+        double get_dom_xmax();
+        double get_dom_ymin();
+        double get_dom_ymax();
+
+        int get_start_idx();
+        int get_goal_idx();
 };
