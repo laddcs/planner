@@ -9,6 +9,7 @@ TEST(HybridAStarTest, TestSetup)
     double speed = 3.0;
     double turn_radius = 8.0;
     double step_length = 3.0;
+    double dt = 1.0;
 
     // Start and Goal locations to be passed to setup
     Eigen::Vector3d start;
@@ -20,7 +21,7 @@ TEST(HybridAStarTest, TestSetup)
     double domain_buffer = 0.0;
 
     // Instanciate planner object
-    hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, step_length);
+    hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
     bool setup_success = HybridAStar->setup(start, goal, domain_buffer);
 
@@ -38,6 +39,7 @@ TEST(HybridAStarTest, TestPlan)
     double speed = 3.0;
     double turn_radius = 8.0;
     double step_length = 3.0;
+    double dt = 1.0;
 
     // Start and Goal locations to be passed to setup
     Eigen::Vector3d start;
@@ -49,19 +51,33 @@ TEST(HybridAStarTest, TestPlan)
     double domain_buffer = 0.0;
 
     // Instanciate planner object
-    hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, step_length);
+    hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
     bool setup_success = HybridAStar->setup(start, goal, domain_buffer);
     bool plan_success = HybridAStar->plan();
 
     ASSERT_TRUE(plan_success);
 
+    // Test path construction
     std::cout << "\nResulting Path:\n";
 
     std::vector<visited_node> path = HybridAStar->get_path();
     for(int i = 0; i < path.size(); i++)
     {
         std::cout << "(" << path[i].pos(0) << ", " << path[i].pos(1) << ", " << path[i].pos(2) << ")\n";
+    }
+
+    std::cout << "\n";
+
+    // Test trajectory construction
+    std::vector<Eigen::Vector4d> trajectory = HybridAStar->get_trajectory();
+
+    std::cout << "\nResulting Trajectory:\n";
+
+    for(int i = 0; i < trajectory.size(); i++)
+    {
+        std::cout << trajectory[i](0) << ", "  << trajectory[i](1) 
+            << ", " << trajectory[i](2) << " TS: " << trajectory[i](3) << "\n";
     }
 
     std::cout << "\n";

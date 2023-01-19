@@ -23,6 +23,7 @@ class planner
         double speed_;
         double R_;
         double L_;
+        double dt_;
 
         geometry_msgs::Pose start_;
         geometry_msgs::Pose goal_;
