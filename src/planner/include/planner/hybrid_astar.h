@@ -36,6 +36,7 @@ struct motion_primitive
     PRIMITIVE aci;
 };
 
+// Comparison operator for boost heap
 struct compare_primitive
 {
     bool operator()(const motion_primitive& node1, const motion_primitive& node2) const
@@ -64,6 +65,8 @@ class hybrid_astar : public planner_algorithm
         double turn_radius_;
         double step_length_;
 
+        double dt_;
+
         double dx_;
         double dy_;
         double dth_;
@@ -88,12 +91,13 @@ class hybrid_astar : public planner_algorithm
         bool new_node(motion_primitive* node, motion_primitive* parent, PRIMITIVE aci);
 
     public:
-        bool setup(Eigen::Vector3d start, Eigen::Vector3d goal, double domain_buffer);
+        bool setup(Eigen::Vector3d start, Eigen::Vector3d goal);
         bool plan();
         std::vector<visited_node> get_path();
+        std::vector<Eigen::Vector4d> get_trajectory();
 
-        hybrid_astar(double speed, double turn_radius, double step_length);
-        virtual ~hybrid_astar();
+        hybrid_astar(double speed, double turn_radius, double dt, double step_length);
+        ~hybrid_astar();
 
         // Getter methods for testing
         double get_dom_xmin();

@@ -7,7 +7,7 @@
     <!-- Parameters for Hybrid-A* Search -->
     <arg name="speed" default="3.0"/>
     <arg name="turn_radius" default="8.0"/>
-    <arg name="step_length" default="3.0"/>
+    <arg name="dt" default="1.0"/>
 
     <include file="$(find mavros)/launch/px4.launch">
         <arg name="fcu_url" value="$(arg fcu_url)" />
@@ -23,6 +23,6 @@
         <!-- Parameters for Hybrid-A* Search -->
         <param name="speed" value="$(arg speed)"/>
         <param name="turn_radius" value="$(arg turn_radius)"/>
-        <param name="step_length" value="$(arg step_length)"/>
+        <param name="dt" value="$(arg dt)"/>
     </node>
 </launch>

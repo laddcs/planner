@@ -1,6 +1,6 @@
 #include <planner/hybrid_astar.h>
 
-hybrid_astar::hybrid_astar(double speed, double turn_radius, double step_length) : planner_algorithm()
+hybrid_astar::hybrid_astar(double speed, double turn_radius, double dt, double step_length) : planner_algorithm()
 {
     speed_ = speed;
     turn_radius_ = turn_radius;
@@ -9,6 +9,8 @@ hybrid_astar::hybrid_astar(double speed, double turn_radius, double step_length)
     dx_ = step_length_;
     dy_ = step_length_;
     dth_ = step_length_/turn_radius_;
+
+    dt_ = dt;
 
     // Default domain size
     domain_.xmin = 0;
@@ -156,24 +158,39 @@ bool hybrid_astar::new_node(motion_primitive* node, motion_primitive* parent, PR
     return success;
 }
 
-bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal, double domain_buffer)
+bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
 {
     start_pos_ = start;
     goal_pos_ = goal;
 
     // Scaling and translating the domain to match the area of interest
-    // Need to fix the scaling -> doesnt pass think test
-    double xbuff = (domain_.xmax - domain_.xmin)*domain_buffer;
-    double ybuff = (domain_.ymax - domain_.ymin)*domain_buffer;
+    double domain_factor = 7*step_length_;
 
     double xdist = (domain_.xmax + domain_.xmin)/2;
     double ydist = (domain_.ymax + domain_.ymin)/2;
 
-    domain_.xmin = (start_pos_(0) + goal_pos_(0))/2 - xdist - xbuff;
-    domain_.xmax = (start_pos_(0) + goal_pos_(0))/2 + xdist + xbuff;
+    domain_.xmin = (start_pos_(0) + goal_pos_(0))/2 - xdist;
+    domain_.xmax = (start_pos_(0) + goal_pos_(0))/2 + xdist;
 
-    domain_.ymin = (start_pos_(1) + goal_pos_(1))/2 - ydist - ybuff;
-    domain_.ymax = (start_pos_(1) + goal_pos_(1))/2 + ydist + ybuff;
+    domain_.ymin = (start_pos_(1) + goal_pos_(1))/2 - ydist;
+    domain_.ymax = (start_pos_(1) + goal_pos_(1))/2 + ydist;
+
+    if((start_pos_(0) < domain_.xmin) || (goal_pos_(0) < domain_.xmin))
+    {
+        domain_.xmin -= std::max<double>(domain_.xmin - start_pos_(0), domain_.xmin - goal_pos_(0)) + domain_factor;
+    }
+    if((start_pos_(0) > domain_.xmax) || (goal_pos_(0) > domain_.xmax))
+    {
+        domain_.xmax += std::max<double>(start_pos_(0) - domain_.xmax, goal_pos_(0) - domain_.xmax) + domain_factor;
+    }
+    if((start_pos_(1) < domain_.ymin) || (goal_pos_(1) < domain_.ymin))
+    {
+        domain_.ymin -= std::max<double>(domain_.ymin - start_pos_(1), domain_.ymin - goal_pos_(1)) + domain_factor;
+    }
+    if((start_pos_(1) > domain_.ymax) || (goal_pos_(1) > domain_.ymax))
+    {
+        domain_.ymax += std::max<double>(start_pos_(1) - domain_.ymax, goal_pos_(1) - domain_.ymax) + domain_factor;
+    }
 
     // Setting up the auxiliary grid
     int LX = std::ceil((domain_.xmax - domain_.xmin)/dx_);
@@ -271,6 +288,82 @@ std::vector<visited_node> hybrid_astar::get_path()
     }
 
     return path;
+}
+
+std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
+{
+    int disc = 3;
+    int t_idx = 0;
+    double dt = dt_/disc;
+
+    double sx;
+    double sy;
+    double sth;
+
+    double cx;
+    double cy;
+    double nth;
+
+    PRIMITIVE current_aci;
+
+    std::vector<visited_node> path = get_path();
+    std::vector<Eigen::Vector4d> trajectory;
+    trajectory.resize((path.size()-1)*4);
+
+    for(int i = 0; i < path.size()-1; i++)
+    {
+        sx = path[i].pos(0);
+        sy = path[i].pos(1);
+        sth = path[i].pos(2);
+        current_aci = path[i+1].parent_aci;
+
+        switch(current_aci)
+        {
+            case PRIMITIVE::TURN_UP:
+                cx = sx - turn_radius_*std::sin(sth);
+                cy = sy + turn_radius_*std::cos(sth);
+
+                for(int j = 0; j <= disc; j++)
+                {
+                    nth = std::fmod(sth + j*dt*dth_, 2*M_PI);
+                    trajectory[t_idx](0) = cx + turn_radius_*std::sin(nth);
+                    trajectory[t_idx](1) = cy - turn_radius_*std::cos(nth);
+                    trajectory[t_idx](2) = nth;
+                    trajectory[t_idx](3) = dt*t_idx;
+                    t_idx ++;
+                }
+
+                break;
+            case PRIMITIVE::TURN_DOWN:
+                cx = sx + turn_radius_*std::sin(sth);
+                cy = sy - turn_radius_*std::cos(sth);
+
+                for(int j = 0; j <= disc; j++)
+                {
+                    nth = std::fmod(sth - j*dt*dth_, 2*M_PI);
+                    trajectory[t_idx](0) = cx + turn_radius_*std::sin(-nth);
+                    trajectory[t_idx](1) = cy + turn_radius_*std::cos(-nth);
+                    trajectory[t_idx](2) = nth;
+                    trajectory[t_idx](3) = dt*t_idx;
+                    t_idx ++;
+                }
+
+                break;
+                break;
+            case PRIMITIVE::GO_STRAIGHT:
+                for(int j = 0; j <= disc; j++)
+                {
+                    trajectory[t_idx](0) = sx + j*dt*step_length_*std::cos(sth);
+                    trajectory[t_idx](1) = sy + j*dt*step_length_*std::sin(sth);
+                    trajectory[t_idx](2) = sth;
+                    trajectory[t_idx](3) = dt*t_idx;
+                    t_idx ++;
+                }
+                break;
+        }
+    }
+    
+    return trajectory;
 }
 
 // Getter methods for testing
