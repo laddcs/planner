@@ -91,13 +91,13 @@ class hybrid_astar : public planner_algorithm
         bool new_node(motion_primitive* node, motion_primitive* parent, PRIMITIVE aci);
 
     public:
-        bool setup(Eigen::Vector3d start, Eigen::Vector3d goal, double domain_buffer);
+        bool setup(Eigen::Vector3d start, Eigen::Vector3d goal);
         bool plan();
         std::vector<visited_node> get_path();
         std::vector<Eigen::Vector4d> get_trajectory();
 
         hybrid_astar(double speed, double turn_radius, double dt, double step_length);
-        virtual ~hybrid_astar();
+        ~hybrid_astar();
 
         // Getter methods for testing
         double get_dom_xmin();

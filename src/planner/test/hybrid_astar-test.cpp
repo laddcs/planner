@@ -15,22 +15,20 @@ TEST(HybridAStarTest, TestSetup)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << 25.0, 25.0, M_PI/4;
-    goal << 75.0, 75.0, M_PI/4;
-
-    double domain_buffer = 0.0;
+    start << 0.0, 0.0, M_PI/4;
+    goal << 0.0, 150.0, M_PI/4;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
-    bool setup_success = HybridAStar->setup(start, goal, domain_buffer);
+    bool setup_success = HybridAStar->setup(start, goal);
+
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmin(), -50.0);
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmax(), 50.0);
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymin(), 0.0);
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymax(), 150.0);
 
     ASSERT_TRUE(setup_success);
-
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmin(), 0.0);
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmax(), 100.0);
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymin(), 0.0);
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymax(), 100.0);
 }
 
 TEST(HybridAStarTest, TestPlan)
@@ -45,17 +43,16 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << 25.0, 25.0, M_PI/4;
-    goal << 75.0, 75.0, M_PI;
-
-    double domain_buffer = 0.0;
+    start << 0.0, 0.0, 0;
+    goal << -110.0, 15.0, 0;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
-    bool setup_success = HybridAStar->setup(start, goal, domain_buffer);
+    bool setup_success = HybridAStar->setup(start, goal);
     bool plan_success = HybridAStar->plan();
 
+    ASSERT_TRUE(setup_success);
     ASSERT_TRUE(plan_success);
 
     // Test path construction

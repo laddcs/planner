@@ -158,24 +158,39 @@ bool hybrid_astar::new_node(motion_primitive* node, motion_primitive* parent, PR
     return success;
 }
 
-bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal, double domain_buffer)
+bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
 {
     start_pos_ = start;
     goal_pos_ = goal;
 
     // Scaling and translating the domain to match the area of interest
-    // Need to fix the scaling -> doesnt pass think test
-    double xbuff = (domain_.xmax - domain_.xmin)*domain_buffer;
-    double ybuff = (domain_.ymax - domain_.ymin)*domain_buffer;
+    double domain_factor = 7*step_length_;
 
     double xdist = (domain_.xmax + domain_.xmin)/2;
     double ydist = (domain_.ymax + domain_.ymin)/2;
 
-    domain_.xmin = (start_pos_(0) + goal_pos_(0))/2 - xdist - xbuff;
-    domain_.xmax = (start_pos_(0) + goal_pos_(0))/2 + xdist + xbuff;
+    domain_.xmin = (start_pos_(0) + goal_pos_(0))/2 - xdist;
+    domain_.xmax = (start_pos_(0) + goal_pos_(0))/2 + xdist;
 
-    domain_.ymin = (start_pos_(1) + goal_pos_(1))/2 - ydist - ybuff;
-    domain_.ymax = (start_pos_(1) + goal_pos_(1))/2 + ydist + ybuff;
+    domain_.ymin = (start_pos_(1) + goal_pos_(1))/2 - ydist;
+    domain_.ymax = (start_pos_(1) + goal_pos_(1))/2 + ydist;
+
+    if((start_pos_(0) < domain_.xmin) || (goal_pos_(0) < domain_.xmin))
+    {
+        domain_.xmin -= std::max<double>(domain_.xmin - start_pos_(0), domain_.xmin - goal_pos_(0)) + domain_factor;
+    }
+    if((start_pos_(0) > domain_.xmax) || (goal_pos_(0) > domain_.xmax))
+    {
+        domain_.xmax += std::max<double>(start_pos_(0) - domain_.xmax, goal_pos_(0) - domain_.xmax) + domain_factor;
+    }
+    if((start_pos_(1) < domain_.ymin) || (goal_pos_(1) < domain_.ymin))
+    {
+        domain_.ymin -= std::max<double>(domain_.ymin - start_pos_(1), domain_.ymin - goal_pos_(1)) + domain_factor;
+    }
+    if((start_pos_(1) > domain_.ymax) || (goal_pos_(1) > domain_.ymax))
+    {
+        domain_.ymax += std::max<double>(start_pos_(1) - domain_.ymax, goal_pos_(1) - domain_.ymax) + domain_factor;
+    }
 
     // Setting up the auxiliary grid
     int LX = std::ceil((domain_.xmax - domain_.xmin)/dx_);
