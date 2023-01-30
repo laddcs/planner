@@ -89,6 +89,7 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
             plan_set_mode.request.custom_mode = "AUTO.LOITER";
             if(set_mode_client_.call(plan_set_mode) && plan_set_mode.response.mode_sent && has_goal_)
             {
+                has_goal_ = false;
                 if(home_set_)
                 {
                     // Transform from QGC geodetic frame to mavros NED frame
@@ -141,16 +142,9 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
     {
         if(has_plan_ && current_state_.mode == mavros_msgs::State::MODE_PX4_LOITER)
         {
+            ROS_INFO("Initializing trajectory tracking!");
+            has_plan_ = false;
             cmd_state_ = CMD_STATE::TRACK;
-
-            planner_msgs::SetController set_controller;
-            set_controller.request.plan = false;
-            set_controller.request.track = true;
-
-            if(set_controller_client_.call(set_controller) && set_controller.response.success)
-            {
-                ROS_INFO("Initializing trajectory tracking!");
-            }            
         } else if((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION))
             && current_state_.armed)
         {
@@ -167,11 +161,12 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
     {
         if(track_complete_)
         {
+            track_complete_ = false;
             mavros_msgs::SetMode plan_set_mode;
             plan_set_mode.request.custom_mode = "AUTO.LOITER";
             if(set_mode_client_.call(plan_set_mode) && plan_set_mode.response.mode_sent)
             {
-                ROS_INFO("Completed Track! Return to Idle.");
+                ROS_INFO("Return to Idle.");
                 cmd_state_ = CMD_STATE::IDLE;
             }
         } else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))

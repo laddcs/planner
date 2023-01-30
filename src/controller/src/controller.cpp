@@ -73,27 +73,29 @@ void controller::controller_cb(const ros::TimerEvent& event)
     if(plan_)
     {
         // call plan service here
-        planner_msgs::SetCommander set_commander;
-        set_commander.request.has_plan = true;
-        set_commander.request.track_complete = false;
-        if(set_commander_client_.call(set_commander) && set_commander.response.success)
+        planner_msgs::PlanPath plan;
+        plan.request.start = start_;
+        plan.request.goal = goal_;
+        if(plan_path_client_.call(plan) && plan.response.success)
         {
-            planner_msgs::PlanPath plan;
-            plan.request.start = start_;
-            plan.request.goal = goal_;
-            if(plan_path_client_.call(plan) && plan.response.success)
+            trajectory_ = plan.response.path.plan;
+
+            current_offboard_setpoint_.pose = trajectory_[0].pos;
+            current_offboard_setpoint_.header.frame_id = "map";
+
+            planner_msgs::SetCommander set_commander;
+            set_commander.request.has_plan = true;
+            set_commander.request.track_complete = false;
+            if(set_commander_client_.call(set_commander) && set_commander.response.success)
             {
-                trajectory_ = plan.response.path.plan;
-
-                current_offboard_setpoint_.pose = trajectory_[0].pos;
-                current_offboard_setpoint_.header.frame_id = "map";
-
                 ROS_INFO("Planning Successful!");
                 plan_ = false;
-            } else 
-            {
-                ROS_INFO("Planning Failure!");
+                track_ = true;
             }
+
+        } else 
+        {
+            ROS_INFO("Planning Failure!");
         }
     }
 
@@ -137,6 +139,19 @@ void controller::controller_cb(const ros::TimerEvent& event)
                 track_idx_ ++;
                 current_offboard_setpoint_.pose = trajectory_[track_idx_].pos;
                 current_offboard_setpoint_.header.frame_id = "map";
+            }
+            setpoint_pub_.publish(current_offboard_setpoint_);
+        } else
+        {
+            tracking_ = false;
+            
+            planner_msgs::SetCommander set_commander;
+            set_commander.request.has_plan = false;
+            set_commander.request.track_complete = true;
+            if(set_commander_client_.call(set_commander) && set_commander.response.success)
+            {
+                ROS_INFO("Completed Track!");
+                track_ = false;
             }
             setpoint_pub_.publish(current_offboard_setpoint_);
         }

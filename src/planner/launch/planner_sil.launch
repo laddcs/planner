@@ -1,6 +1,7 @@
 <launch>
     <arg name="fcu_url" default="udp://:14551@127.0.0.1:14551"/>
     <arg name="gcs_url" default=""/>
+    <arg name="mission/pull_after_gcs" default="true"/>
 
     <arg name="planner_type" value="hybrid-astar"/>
 
