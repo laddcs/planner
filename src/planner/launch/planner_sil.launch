@@ -16,7 +16,6 @@
     </include>
 
     <node pkg="commander" type="commander_node" name="commander" output="screen"/>
-    <node pkg="controller" type="controller_node" name="controller" output="screen"/>
 
     <node pkg="planner" type="planner_node" name="planner" output="screen">
         <param name="planner_type" type="string" value="$(arg planner_type)"/>

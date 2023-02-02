@@ -1,26 +1,34 @@
 #include <commander/commander.h>
 
-commander::commander(const ros::NodeHandle &nh) : nh_(nh)
+commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_nh) : nh_(nh), control_nh_(control_nh)
 {
     state_sub_ = nh_.subscribe("mavros/state", 1, &commander::state_cb, this);
+    setpoint_sub_ = nh_.subscribe("mavros/setpoint_raw/target_local", 1, &commander::setpoint_cb, this);
     waypoint_sub_ = nh_.subscribe("mavros/mission/waypoints", 1, &commander::waypoint_cb, this);
     home_sub_ = nh_.subscribe("mavros/home_position/home", 1, &commander::home_cb, this);
     pose_sub_ = nh_.subscribe("mavroslocal_position/pose", 1, &commander::pose_cb, this);
 
-    set_commander_ = nh_.advertiseService("commander/set_commander", &commander::set_commander_cb, this);
+    setpoint_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+
+    plan_path_client_ = nh_.serviceClient<planner_msgs::PlanPath>("planner/plan_path");
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
-    set_controller_client_ = nh_.serviceClient<planner_msgs::SetController>("controller/set_controller");
 
     cmdloop_timer_ = nh_.createTimer(ros::Duration(0.1), &commander::cmdloop_cb, this);
+    ctlloop_timer_ = control_nh_.createTimer(ros::Duration(0.1), &commander::ctlloop_cb, this);
 
+    // Tracking Info
+    last_request = ros::Time::now();
+
+    // State Flags
     home_set_ = false;
     has_goal_ = false;
-
+    planning_ = false;
     has_plan_ = false;
+    tracking_ = false;
     track_complete_ = false;
-
     cmd_state_ = CMD_STATE::IDLE;
 
+    // Coordinate Transform
     earth = GeographicLib::Geocentric(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
 }
 
@@ -71,12 +79,12 @@ void commander::pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_pose_ = (*msg).pose;
 }
 
-bool commander::set_commander_cb(planner_msgs::SetCommander::Request& request, planner_msgs::SetCommander::Response& response)
+void commander::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
 {
-    has_plan_ = request.has_plan;
-    track_complete_ = request.track_complete;
-    response.success = true;
-    return true;
+    current_px4_setpoint_.header.frame_id = "map";
+    current_px4_setpoint_.header.stamp = ros::Time::now();
+    current_px4_setpoint_.pose.position = (*msg).position;
+    current_px4_setpoint_.pose.orientation = euler2Quat(0, 0, (*msg).yaw);
 }
 
 void commander::cmdloop_cb(const ros::TimerEvent &event)
@@ -106,24 +114,13 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
 
                     // Set the Start Pose to the current pose, set the Goal Pose to the waypoint from QGC
                     // Set the goal yaw to the current yaw !! This will get more complicated as POI are introduced !!
-                    planner_msgs::SetController set_controller;
-                    set_controller.request.plan = true;
-                    set_controller.request.track = false;
+                    goal_pose_.position.x = goal_point(0);
+                    goal_pose_.position.y = goal_point(1);
+                    goal_pose_.position.z = goal_point(2);
+                    goal_pose_.orientation = current_pose_.orientation;
 
-                    set_controller.request.goal.position.x = goal_point(0);
-                    set_controller.request.goal.position.y = goal_point(1);
-                    set_controller.request.goal.position.z = goal_point(2);
-                    set_controller.request.goal.orientation = current_pose_.orientation;
-
-                    set_controller.request.start = current_pose_;
-
-                    if(set_controller_client_.call(set_controller) && set_controller.response.success)
-                    {
-                        cmd_state_ = CMD_STATE::PLANNING;
-                        ROS_INFO("Start set to: (%3f, %3f, %3f)", current_pose_.position.x, current_pose_.position.y, current_pose_.position.z);
-                        ROS_INFO("Goal set to: (%3f, %3f, %3f)", goal_point(0), goal_point(1), goal_point(2));
-                        ROS_INFO("Initializing trajectory planning!");
-                    }
+                    cmd_state_ = CMD_STATE::PLANNING;
+                    planning_ = true;
                 } else
                 {
                     ROS_WARN("Warning! Home Not Set!");
@@ -133,7 +130,6 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
             && current_state_.armed)
         {
             ROS_INFO("RC control enabled.");
-
             cmd_state_ = CMD_STATE::RC;
         }
     }
@@ -172,29 +168,14 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
         } else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))
             && current_state_.armed)
         {
+            ROS_INFO("RC control enabled, abandoning tracking.");
+            tracking_ = false;
             cmd_state_ = CMD_STATE::RC;
-
-            planner_msgs::SetController set_controller;
-            set_controller.request.plan = false;
-            set_controller.request.track = false;
-
-            if(set_controller_client_.call(set_controller) && set_controller.response.success)
-            {
-                ROS_INFO("RC control enabled, abandoning tracking.");
-            }    
-
         } else if((current_state_.mode == mavros_msgs::State::MODE_PX4_RTL) || (current_state_.mode == mavros_msgs::State::MODE_PX4_LAND))
         {
+            ROS_INFO("PX4 Autonomous mode enabled, abandoning tracking.");
+            tracking_ = false;
             cmd_state_ = CMD_STATE::IDLE;
-
-            planner_msgs::SetController set_controller;
-            set_controller.request.plan = false;
-            set_controller.request.track = false;
-
-            if(set_controller_client_.call(set_controller) && set_controller.response.success)
-            {
-                ROS_INFO("PX4 Autonomous mode enabled, abandoning tracking.");
-            }  
         }
     }
 
@@ -206,4 +187,93 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
             cmd_state_ = CMD_STATE::IDLE;
         }
     }
+}
+
+void commander::ctlloop_cb(const ros::TimerEvent &event)
+{
+    if(planning_)
+    {
+        ROS_INFO("Start set to: (%3f, %3f, %3f)", current_pose_.position.x, current_pose_.position.y, current_pose_.position.z);
+        ROS_INFO("Goal set to: (%3f, %3f, %3f)", goal_pose_.position.x, goal_pose_.position.y, goal_pose_.position.z);
+        ROS_INFO("Initializing trajectory planning!");
+
+        // Call plan service here
+        planner_msgs::PlanPath plan;
+        plan.request.start = current_pose_;
+        plan.request.goal = goal_pose_;
+        if(plan_path_client_.call(plan) && plan.response.success)
+        {
+            trajectory_ = plan.response.path.plan;
+
+            current_offboard_setpoint_.pose = trajectory_[0].pos;
+            current_offboard_setpoint_.header.frame_id = "map";
+
+            planner_msgs::SetCommander set_commander;
+            set_commander.request.has_plan = true;
+            set_commander.request.track_complete = false;
+            has_plan_ = true;
+            planning_ = false;
+            track_idx_ = 0;
+        } else 
+        {
+            ROS_INFO("Planning Failure!");
+            planning_ = false;
+        }
+    }
+
+    if(cmd_state_ == CMD_STATE::TRACK)
+    {
+        if((current_state_.mode != mavros_msgs::State::MODE_PX4_OFFBOARD))
+        {
+            if(((ros::Time::now() - last_request) > ros::Duration(5.0)))
+            {
+                mavros_msgs::SetMode offb_set_mode;
+                offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                last_request = ros::Time::now();
+
+                if(set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent)
+                {
+                    ROS_INFO("Offboard enabled!");
+                }
+            }
+            setpoint_pub_.publish(current_px4_setpoint_);
+            return;
+        }
+
+        if(!tracking_)
+        {
+            if(((current_pose_.position.z - trajectory_[0].pos.position.z) > 0.1))
+            {
+                setpoint_pub_.publish(current_offboard_setpoint_);
+                return;
+            } else
+            {
+                tracking_ = true;
+                track_start_ = ros::Time::now();
+            }
+            return;
+        }
+
+        if(track_idx_ < trajectory_.size())
+        {
+            if((ros::Time::now() - track_start_) > (trajectory_[track_idx_].target_time.data))
+            {
+                track_idx_ ++;
+                current_offboard_setpoint_.pose = trajectory_[track_idx_].pos;
+                current_offboard_setpoint_.header.frame_id = "map";
+            }
+            setpoint_pub_.publish(current_offboard_setpoint_);
+        } else
+        {
+            tracking_ = false;
+            track_complete_ = true;
+        }
+    }
+
+    if(!(cmd_state_ == CMD_STATE::PLANNING) && !(cmd_state_ == CMD_STATE::TRACK))
+    {
+        setpoint_pub_.publish(current_px4_setpoint_);
+    }
+
 }
