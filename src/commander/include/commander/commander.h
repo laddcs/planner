@@ -14,6 +14,7 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/WaypointList.h>
+#include <mavros_msgs/WaypointPull.h>
 #include <mavros_msgs/CommandCode.h>
 
 #include <planner_msgs/SetController.h>
@@ -41,6 +42,7 @@ class commander
 
         ros::ServiceClient plan_path_client_;
         ros::ServiceClient set_mode_client_;
+        ros::ServiceClient waypoint_pull_client_;
         
         ros::Timer cmdloop_timer_;
         ros::Timer ctlloop_timer_;

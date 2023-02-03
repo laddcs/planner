@@ -95,6 +95,7 @@ class hybrid_astar : public planner_algorithm
         bool plan();
         std::vector<visited_node> get_path();
         std::vector<Eigen::Vector4d> get_trajectory();
+        bool cleanup();
 
         hybrid_astar(double speed, double turn_radius, double dt, double step_length);
         ~hybrid_astar();

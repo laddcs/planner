@@ -370,6 +370,24 @@ std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
     return trajectory;
 }
 
+bool hybrid_astar::cleanup()
+{
+    // Default domain size
+    domain_.xmin = 0;
+    domain_.xmax = 100;
+    domain_.ymin = 0;
+    domain_.ymax = 100; 
+
+    visited_.clear();
+    frontier_.clear();
+
+    grid_x_.clear();
+    grid_y_.clear();
+    grid_th_.clear();
+
+    return true;
+}
+
 // Getter methods for testing
 double hybrid_astar::get_dom_xmin() {return domain_.xmin;}
 double hybrid_astar::get_dom_xmax() {return domain_.xmax;}
