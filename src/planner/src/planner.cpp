@@ -39,6 +39,11 @@ bool planner::planner_cb(planner_msgs::PlanPath::Request& request, planner_msgs:
         trajectory = planner_algorithm_->get_trajectory();
         final_trajectory.resize(trajectory.size());
         response.success = true;
+        if(!planner_algorithm_->cleanup())
+        {
+            response.success = false;
+            return true;
+        }
     } else 
     {
         response.success = false;

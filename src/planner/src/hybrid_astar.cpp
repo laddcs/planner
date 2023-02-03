@@ -197,17 +197,21 @@ bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
     int LY = std::ceil((domain_.ymax - domain_.ymin)/dy_);
     int LTH = std::ceil((2*M_PI)/dth_);
 
+    grid_x_.resize(LX);
+    grid_y_.resize(LY);
+    grid_th_.resize(LTH);
+
     for(int i = 0; i < LX; i++)
     {
-        grid_x_.emplace_back<double>(domain_.xmin + ((double)(dx_*i)));
+        grid_x_[i] = (domain_.xmin + ((double)(dx_*i)));
     }
     for(int i = 0; i < LY; i++)
     {
-        grid_y_.emplace_back<double>(domain_.ymin + ((double)(dy_*i)));
+        grid_y_[i] = (domain_.ymin + ((double)(dy_*i)));
     }
     for(int i = 0; i < LTH; i++)
     {
-        grid_th_.emplace_back<double>((double)(dth_*i));
+        grid_th_[i] = ((double)(dth_*i));
     }
 
     start_idx_ = get_idx(start_pos_);
@@ -364,6 +368,24 @@ std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
     }
     
     return trajectory;
+}
+
+bool hybrid_astar::cleanup()
+{
+    // Default domain size
+    domain_.xmin = 0;
+    domain_.xmax = 100;
+    domain_.ymin = 0;
+    domain_.ymax = 100; 
+
+    visited_.clear();
+    frontier_.clear();
+
+    grid_x_.clear();
+    grid_y_.clear();
+    grid_th_.clear();
+
+    return true;
 }
 
 // Getter methods for testing
