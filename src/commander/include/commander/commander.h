@@ -60,8 +60,8 @@ class commander
         ros::Time track_start_;
 
         int track_idx_;
-        geometry_msgs::PoseStamped current_px4_setpoint_;
-        geometry_msgs::PoseStamped current_offboard_setpoint_;
+        mavros_msgs::PositionTarget current_px4_setpoint_;
+        mavros_msgs::PositionTarget current_offboard_setpoint_;
         std::vector<planner_msgs::PathSetpoint> trajectory_;
 
         // State Flags

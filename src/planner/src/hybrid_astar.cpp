@@ -294,7 +294,7 @@ std::vector<visited_node> hybrid_astar::get_path()
     return path;
 }
 
-std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
+std::vector<std::array<double, 7>> hybrid_astar::get_trajectory()
 {
     int disc = 3;
     int t_idx = 0;
@@ -311,7 +311,7 @@ std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
     PRIMITIVE current_aci;
 
     std::vector<visited_node> path = get_path();
-    std::vector<Eigen::Vector4d> trajectory;
+    std::vector<std::array<double, 7>> trajectory;
     trajectory.resize((path.size()-1)*4);
 
     for(int i = 0; i < path.size()-1; i++)
@@ -330,10 +330,16 @@ std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
                 for(int j = 0; j <= disc; j++)
                 {
                     nth = std::fmod(sth + j*dt*dth_, 2*M_PI);
-                    trajectory[t_idx](0) = cx + turn_radius_*std::sin(nth);
-                    trajectory[t_idx](1) = cy - turn_radius_*std::cos(nth);
-                    trajectory[t_idx](2) = nth;
-                    trajectory[t_idx](3) = dt*t_idx;
+                    trajectory[t_idx][0] = cx + turn_radius_*std::sin(nth);
+                    trajectory[t_idx][1] = cy - turn_radius_*std::cos(nth);
+                    trajectory[t_idx][2] = nth;
+
+                    trajectory[t_idx][3] = turn_radius_*dth_*std::cos(nth);
+                    trajectory[t_idx][4] = turn_radius_*dth_*std::sin(nth);
+                    trajectory[t_idx][5] = 0.0;
+
+                    trajectory[t_idx][6] = dt*t_idx;
+
                     t_idx ++;
                 }
 
@@ -345,24 +351,35 @@ std::vector<Eigen::Vector4d> hybrid_astar::get_trajectory()
                 for(int j = 0; j <= disc; j++)
                 {
                     nth = std::fmod(sth - j*dt*dth_, 2*M_PI);
-                    trajectory[t_idx](0) = cx + turn_radius_*std::sin(-nth);
-                    trajectory[t_idx](1) = cy + turn_radius_*std::cos(-nth);
-                    trajectory[t_idx](2) = nth;
-                    trajectory[t_idx](3) = dt*t_idx;
+                    trajectory[t_idx][0] = cx + turn_radius_*std::sin(-nth);
+                    trajectory[t_idx][1] = cy + turn_radius_*std::cos(-nth);
+                    trajectory[t_idx][2] = nth;
+
+                    trajectory[t_idx][3] = turn_radius_*dth_*std::cos(-nth);
+                    trajectory[t_idx][4] = -turn_radius_*dth_*std::sin(-nth);
+                    trajectory[t_idx][5] = 0.0;
+
+                    trajectory[t_idx][6] = dt*t_idx;
+
                     t_idx ++;
                 }
 
                 break;
-                break;
             case PRIMITIVE::GO_STRAIGHT:
                 for(int j = 0; j <= disc; j++)
                 {
-                    trajectory[t_idx](0) = sx + j*dt*step_length_*std::cos(sth);
-                    trajectory[t_idx](1) = sy + j*dt*step_length_*std::sin(sth);
-                    trajectory[t_idx](2) = sth;
-                    trajectory[t_idx](3) = dt*t_idx;
+                    trajectory[t_idx][0] = sx + j*dt*step_length_*std::cos(sth);
+                    trajectory[t_idx][1] = sy + j*dt*step_length_*std::sin(sth);
+                    trajectory[t_idx][2] = sth;
+
+                    trajectory[t_idx][3] = step_length_*std::cos(sth);
+                    trajectory[t_idx][4] = step_length_*std::sin(sth);
+                    trajectory[t_idx][5] = 0.0;
+
+                    trajectory[t_idx][6] = dt*t_idx;
                     t_idx ++;
                 }
+
                 break;
         }
     }

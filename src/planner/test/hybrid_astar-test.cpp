@@ -46,7 +46,7 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d goal;
 
     start << 0.0, 0.0, 0;
-    goal << -36.78, 106.84, 0;
+    goal << -26.823364, 98.168135, 0;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
@@ -69,14 +69,15 @@ TEST(HybridAStarTest, TestPlan)
     std::cout << "\n";
 
     // Test trajectory construction
-    std::vector<Eigen::Vector4d> trajectory = HybridAStar->get_trajectory();
+    std::vector<std::array<double, 7>> trajectory = HybridAStar->get_trajectory();
 
     std::cout << "\nResulting Trajectory:\n";
 
     for(int i = 0; i < trajectory.size(); i++)
     {
-        std::cout << trajectory[i](0) << ", "  << trajectory[i](1) 
-            << ", " << trajectory[i](2) << " TS: " << trajectory[i](3) << "\n";
+        std::cout << "(" << trajectory[i][0] << ", "  << trajectory[i][1] << ", " << trajectory[i][2] << ")" 
+            << " (" << trajectory[i][3] << ", "  << trajectory[i][4] << ", " << trajectory[i][5] << ")"
+            << " TS: " << trajectory[i][6] << "\n";
     }
 
     std::cout << "\n";

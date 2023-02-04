@@ -62,3 +62,8 @@ inline geometry_msgs::Quaternion euler2Quat(const double roll, const double pitc
 
     return quat;
 }
+
+inline double extract_yaw(const geometry_msgs::Quaternion q)
+{
+    return atan2(2.0*(q.y*q.z + q.w*q.x), q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+}
