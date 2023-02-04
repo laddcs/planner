@@ -45,6 +45,9 @@ struct compare_primitive
     }
 };
 
+using Handle = boost::heap::fibonacci_heap<motion_primitive, boost::heap::compare<compare_primitive>>::handle_type;
+static const Handle   NOHANDLE{}; // for expressive comparisons
+
 // Data required for visited set
 struct visited_node
 {
@@ -54,6 +57,7 @@ struct visited_node
     bool visited = false; // Default is unvisited
     int parent_idx;
     PRIMITIVE parent_aci;
+    Handle handle;
 };
 
 class hybrid_astar : public planner_algorithm
@@ -94,7 +98,7 @@ class hybrid_astar : public planner_algorithm
         bool setup(Eigen::Vector3d start, Eigen::Vector3d goal);
         bool plan();
         std::vector<visited_node> get_path();
-        std::vector<Eigen::Vector4d> get_trajectory();
+        std::vector<std::array<double, 7>> get_trajectory();
         bool cleanup();
 
         hybrid_astar(double speed, double turn_radius, double dt, double step_length);

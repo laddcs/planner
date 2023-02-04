@@ -28,7 +28,7 @@ bool planner::planner_cb(planner_msgs::PlanPath::Request& request, planner_msgs:
     Eigen::Vector3d goal;
     double height = request.goal.position.z;
 
-    std::vector<Eigen::Vector4d> trajectory;
+    std::vector<std::array<double, 7>> trajectory;
     std::vector<planner_msgs::PathSetpoint> final_trajectory;
 
     start << start_.position.x, start_.position.y, extract_yaw(start_.orientation);
@@ -52,13 +52,17 @@ bool planner::planner_cb(planner_msgs::PlanPath::Request& request, planner_msgs:
 
     for(int i = 0; i < final_trajectory.size(); i++)
     {
-        final_trajectory[i].pos.position.x = trajectory[i](0);
-        final_trajectory[i].pos.position.y = trajectory[i](1);
+        final_trajectory[i].pos.position.x = trajectory[i][0];
+        final_trajectory[i].pos.position.y = trajectory[i][1];
         final_trajectory[i].pos.position.z = height;
 
-        final_trajectory[i].pos.orientation = euler2Quat(0, 0, trajectory[i](2));
+        final_trajectory[i].pos.orientation = euler2Quat(0, 0, trajectory[i][2]);
 
-        final_trajectory[i].target_time.data = ros::Duration(trajectory[i](3));
+        final_trajectory[i].vel.linear.x = trajectory[i][3];
+        final_trajectory[i].vel.linear.y = trajectory[i][4];
+        final_trajectory[i].vel.linear.z = trajectory[i][5];
+
+        final_trajectory[i].target_time.data = ros::Duration(trajectory[i][6]);
     }
 
     response.path.plan = final_trajectory;

@@ -8,7 +8,7 @@ commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_n
     home_sub_ = nh_.subscribe("mavros/home_position/home", 1, &commander::home_cb, this);
     pose_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &commander::pose_cb, this);
 
-    setpoint_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+    setpoint_pub_ = nh_.advertise<mavros_msgs::PositionTarget>("mavros/setpoint_raw/local", 10);
 
     plan_path_client_ = nh_.serviceClient<planner_msgs::PlanPath>("planner/plan_path");
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
@@ -85,10 +85,8 @@ void commander::pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void commander::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
 {
-    current_px4_setpoint_.header.frame_id = "map";
+    current_px4_setpoint_ = *msg;
     current_px4_setpoint_.header.stamp = ros::Time::now();
-    current_px4_setpoint_.pose.position = (*msg).position;
-    current_px4_setpoint_.pose.orientation = euler2Quat(0, 0, (*msg).yaw);
 }
 
 void commander::cmdloop_cb(const ros::TimerEvent &event)
@@ -225,12 +223,16 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
             {
                 trajectory_ = plan.response.path.plan;
 
-                current_offboard_setpoint_.pose = trajectory_[0].pos;
+                current_offboard_setpoint_.position = trajectory_[0].pos.position;
+                current_offboard_setpoint_.velocity = trajectory_[0].vel.linear;
+
+                current_offboard_setpoint_.yaw = extract_yaw(trajectory_[0].pos.orientation);
+
+                current_offboard_setpoint_.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+                current_offboard_setpoint_.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX + mavros_msgs::PositionTarget::IGNORE_AFY
+                    + mavros_msgs::PositionTarget::IGNORE_AFZ + mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
                 current_offboard_setpoint_.header.frame_id = "map";
 
-                planner_msgs::SetCommander set_commander;
-                set_commander.request.has_plan = true;
-                set_commander.request.track_complete = false;
                 has_plan_ = true;
                 planning_ = false;
                 track_idx_ = 0;
@@ -280,7 +282,14 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
                 if((ros::Time::now() - track_start_) > (trajectory_[track_idx_].target_time.data))
                 {
                     track_idx_ ++;
-                    current_offboard_setpoint_.pose = trajectory_[track_idx_].pos;
+                    current_offboard_setpoint_.position = trajectory_[track_idx_].pos.position;
+                    current_offboard_setpoint_.velocity = trajectory_[track_idx_].vel.linear;
+
+                    current_offboard_setpoint_.yaw = extract_yaw(trajectory_[track_idx_].pos.orientation);
+
+                    current_offboard_setpoint_.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;;
+                    current_offboard_setpoint_.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX + mavros_msgs::PositionTarget::IGNORE_AFY
+                        + mavros_msgs::PositionTarget::IGNORE_AFZ + mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
                     current_offboard_setpoint_.header.frame_id = "map";
                 }
                 setpoint_pub_.publish(current_offboard_setpoint_);
