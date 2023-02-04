@@ -46,7 +46,7 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d goal;
 
     start << 0.0, 0.0, 0;
-    goal << -26.823364, 98.168135, 0;
+    goal << -36.78, 106.84, 0;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);

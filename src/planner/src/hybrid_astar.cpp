@@ -247,6 +247,7 @@ bool hybrid_astar::plan()
         current_ = frontier_.top();
         c_idx = current_.idx;
         frontier_.pop();
+        visited_[c_idx].handle = NOHANDLE;
 
         if(visited_[c_idx].visited)
         {
@@ -268,7 +269,17 @@ bool hybrid_astar::plan()
         {
             if(new_node(&node, &current_, aci))
             {
-                frontier_.push(node);
+                if(visited_[node.idx].handle == NOHANDLE)
+                {
+                    visited_[node.idx].handle = frontier_.push(node);
+                } else
+                {
+                    double current_starcost = (*visited_[node.idx].handle).starcost;
+                    if(node.starcost < current_starcost)
+                    {
+                        frontier_.decrease(visited_[node.idx].handle, node);
+                    }
+                }
             }
         }
     }
