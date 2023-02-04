@@ -269,6 +269,7 @@ bool hybrid_astar::plan()
         {
             if(new_node(&node, &current_, aci))
             {
+                frontier_.push(node);
                 if(visited_[node.idx].handle == NOHANDLE)
                 {
                     visited_[node.idx].handle = frontier_.push(node);
