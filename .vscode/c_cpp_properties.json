@@ -11,7 +11,8 @@
                 "/home/bryce/gnc_ws/src/commander/include/**",
                 "/home/bryce/gnc_ws/src/controller/include/**",
                 "/usr/include/**",
-                "${workspaceFolder}/devel/.private/planner_msgs/include"
+                "${workspaceFolder}/devel/.private/planner_msgs/include",
+                "/usr/include/eigen3"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",

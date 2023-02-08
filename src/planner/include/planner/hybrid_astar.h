@@ -85,6 +85,10 @@ class hybrid_astar : public planner_algorithm
         std::vector<double> grid_y_;
         std::vector<double> grid_th_;
 
+        int LX_;
+        int LY_;
+        int LTH_;
+
         std::vector<visited_node> visited_;
         boost::heap::fibonacci_heap<motion_primitive, boost::heap::compare<compare_primitive>> frontier_;
 
@@ -112,4 +116,8 @@ class hybrid_astar : public planner_algorithm
 
         int get_start_idx();
         int get_goal_idx();
+
+        int get_LX() {return LX_;};
+        int get_LY() {return LY_;};
+        int get_LTH() {return LTH_;};
 };

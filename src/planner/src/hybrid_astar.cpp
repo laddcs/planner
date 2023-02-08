@@ -23,50 +23,20 @@ hybrid_astar::~hybrid_astar() {}
 
 int hybrid_astar::get_idx(Eigen::Vector3d pos)
 {
-    int x_idx = 0;
-    int y_idx = 0;
-    int th_idx = 0;
-
-    double xmin = std::abs(grid_x_[0] - pos(0));
-    double ymin = std::abs(grid_y_[0] - pos(1));
-    double thmin = std::abs(grid_th_[0] - pos(2));
-
-    if((pos(0) < grid_x_[0]) || (pos(0) > grid_x_.back()))
+    if((pos(0) < domain_.xmin) || (pos(0) > domain_.xmax))
+    {
+        return -1;
+    }
+    if((pos(1) < domain_.ymin) || (pos(1) > domain_.ymax))
     {
         return -1;
     }
 
-    if((pos(1) < grid_y_[0]) || (pos(1) > grid_y_.back()))
-    {
-        return -1;
-    }
-
-    for(int i = 1; i < grid_x_.size(); i++)
-    {
-        if(std::abs(grid_x_[i] - pos(0)) <= xmin)
-        {
-            xmin = std::abs(grid_x_[i] - pos(0));
-            x_idx = i;
-        }
-    }
-    for(int i = 1; i < grid_y_.size(); i++)
-    {
-        if(std::abs(grid_y_[i] - pos(1)) <= ymin)
-        {
-            ymin = std::abs(grid_y_[i] - pos(1));
-            y_idx = i;
-        }
-    }
-    for(int i = 1; i < grid_th_.size(); i++)
-    {
-        if(std::abs(grid_th_[i] - pos(2)) <= thmin)
-        {
-            thmin = std::abs(grid_th_[i] - pos(2));
-            th_idx = i;
-        }
-    }
+    const int x_idx = std::round(LX_*(pos(0) - domain_.xmin)/(domain_.xmax - domain_.xmin));
+    const int y_idx = std::round(LY_*(pos(1) - domain_.ymin)/(domain_.ymax - domain_.ymin));
+    const int th_idx = std::round(LTH_*(pos(2) + M_PI)/(2*M_PI));
     
-    return th_idx*(grid_x_.size())*(grid_y_.size()) + y_idx*(grid_x_.size()) + x_idx;
+    return th_idx*LX_*LY_ + y_idx*LX_ + x_idx;
 }
 
 double hybrid_astar::heuristic(Eigen::Vector3d pos)
@@ -193,26 +163,9 @@ bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
     }
 
     // Setting up the auxiliary grid
-    int LX = std::ceil((domain_.xmax - domain_.xmin)/dx_);
-    int LY = std::ceil((domain_.ymax - domain_.ymin)/dy_);
-    int LTH = std::ceil((2*M_PI)/dth_);
-
-    grid_x_.resize(LX);
-    grid_y_.resize(LY);
-    grid_th_.resize(LTH);
-
-    for(int i = 0; i < LX; i++)
-    {
-        grid_x_[i] = (domain_.xmin + ((double)(dx_*i)));
-    }
-    for(int i = 0; i < LY; i++)
-    {
-        grid_y_[i] = (domain_.ymin + ((double)(dy_*i)));
-    }
-    for(int i = 0; i < LTH; i++)
-    {
-        grid_th_[i] = ((double)(dth_*i));
-    }
+    LX_ = std::ceil((domain_.xmax - domain_.xmin)/dx_);
+    LY_ = std::ceil((domain_.ymax - domain_.ymin)/dy_);
+    LTH_ = std::ceil((2*M_PI)/dth_);
 
     start_idx_ = get_idx(start_pos_);
     goal_idx_ = get_idx(goal_pos_);
@@ -232,7 +185,7 @@ bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
 
     frontier_.push(start_node);
 
-    visited_.resize(LX*LY*LTH);
+    visited_.resize(LX_*LY_*LTH_);
 
     return true;
 }
@@ -247,13 +200,8 @@ bool hybrid_astar::plan()
         current_ = frontier_.top();
         c_idx = current_.idx;
         frontier_.pop();
+
         visited_[c_idx].handle = NOHANDLE;
-
-        if(visited_[c_idx].visited)
-        {
-            continue;
-        }
-
         visited_[c_idx].cost = current_.cost;
         visited_[c_idx].parent_aci = current_.aci;
         visited_[c_idx].parent_idx = current_.parent_idx;
@@ -269,16 +217,18 @@ bool hybrid_astar::plan()
         {
             if(new_node(&node, &current_, aci))
             {
-                frontier_.push(node);
-                if(visited_[node.idx].handle == NOHANDLE)
+                if(!visited_[node.idx].visited)
                 {
-                    visited_[node.idx].handle = frontier_.push(node);
-                } else
-                {
-                    double current_starcost = (*visited_[node.idx].handle).starcost;
-                    if(node.starcost < current_starcost)
+                    if(visited_[node.idx].handle == NOHANDLE)
                     {
-                        frontier_.decrease(visited_[node.idx].handle, node);
+                        visited_[node.idx].handle = frontier_.push(node);
+                    } else
+                    {
+                        double current_starcost = (*visited_[node.idx].handle).starcost;
+                        if(node.starcost < current_starcost)
+                        {
+                            frontier_.decrease(visited_[node.idx].handle, node);
+                        }
                     }
                 }
             }
@@ -308,7 +258,7 @@ std::vector<visited_node> hybrid_astar::get_path()
 
 std::vector<std::array<double, 7>> hybrid_astar::get_trajectory()
 {
-    int disc = 3;
+    const int disc = 3; // Need tp set as a parameter
     int t_idx = 0;
     double dt = dt_/disc;
 
@@ -409,10 +359,6 @@ bool hybrid_astar::cleanup()
 
     visited_.clear();
     frontier_.clear();
-
-    grid_x_.clear();
-    grid_y_.clear();
-    grid_th_.clear();
 
     return true;
 }
