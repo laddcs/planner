@@ -15,20 +15,25 @@ TEST(HybridAStarTest, TestSetup)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << 0.0, 0.0, M_PI/4;
-    goal << 0.0, 150.0, M_PI/4;
+    start << 25.0, 25.0, 0;
+    goal << 75.0, 75.0, 0;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
     bool setup_success = HybridAStar->setup(start, goal);
 
-/*  
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmin(), -50.0);
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmax(), 50.0);
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmin(), 0.0);
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_xmax(), 100.0);
     ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymin(), 0.0);
-    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymax(), 150.0); 
-*/
+    ASSERT_DOUBLE_EQ(HybridAStar->get_dom_ymax(), 100.0);
+
+    ASSERT_EQ(HybridAStar->get_LX(), 34);
+    ASSERT_EQ(HybridAStar->get_LY(), 34);
+    ASSERT_EQ(HybridAStar->get_LTH(), 17);
+
+    ASSERT_EQ(HybridAStar->get_start_idx(), 315);
+    ASSERT_EQ(HybridAStar->get_goal_idx(), 910);
 
     ASSERT_TRUE(setup_success);
 }
