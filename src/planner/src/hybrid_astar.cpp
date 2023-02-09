@@ -34,7 +34,7 @@ int hybrid_astar::get_idx(Eigen::Vector3d pos)
 
     const int x_idx = std::round(LX_*(pos(0) - domain_.xmin)/(domain_.xmax - domain_.xmin));
     const int y_idx = std::round(LY_*(pos(1) - domain_.ymin)/(domain_.ymax - domain_.ymin));
-    const int th_idx = std::round(LTH_*(pos(2) + M_PI)/(2*M_PI));
+    const int th_idx = std::round(LTH_*pos(2)/(2*M_PI));
     
     return th_idx*LX_*LY_ + y_idx*LX_ + x_idx;
 }
@@ -86,7 +86,7 @@ bool hybrid_astar::new_node(motion_primitive* node, motion_primitive* parent, PR
         case PRIMITIVE::TURN_DOWN:
             cx = sx + turn_radius_*std::sin(sth);
             cy = sy - turn_radius_*std::cos(sth);
-            nth = std::fmod(sth - dth_, 2*M_PI);
+            nth = std::fmod(sth - dth_ + 2*M_PI, 2*M_PI);
 
             pos << cx + turn_radius_*std::sin(-nth), cy + turn_radius_*std::cos(-nth), nth;
             node->pos = pos;
@@ -134,7 +134,7 @@ bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
     goal_pos_ = goal;
 
     // Scaling and translating the domain to match the area of interest
-    double domain_factor = 7*step_length_;
+    double domain_factor = 9*step_length_;
 
     double xdist = (domain_.xmax + domain_.xmin)/2;
     double ydist = (domain_.ymax + domain_.ymin)/2;
@@ -147,20 +147,26 @@ bool hybrid_astar::setup(Eigen::Vector3d start, Eigen::Vector3d goal)
 
     if((start_pos_(0) < domain_.xmin) || (goal_pos_(0) < domain_.xmin))
     {
-        domain_.xmin -= std::max<double>(domain_.xmin - start_pos_(0), domain_.xmin - goal_pos_(0)) + domain_factor;
+        domain_.xmin -= std::max<double>(domain_.xmin - start_pos_(0), domain_.xmin - goal_pos_(0));
     }
     if((start_pos_(0) > domain_.xmax) || (goal_pos_(0) > domain_.xmax))
     {
-        domain_.xmax += std::max<double>(start_pos_(0) - domain_.xmax, goal_pos_(0) - domain_.xmax) + domain_factor;
+        domain_.xmax += std::max<double>(start_pos_(0) - domain_.xmax, goal_pos_(0) - domain_.xmax);
     }
     if((start_pos_(1) < domain_.ymin) || (goal_pos_(1) < domain_.ymin))
     {
-        domain_.ymin -= std::max<double>(domain_.ymin - start_pos_(1), domain_.ymin - goal_pos_(1)) + domain_factor;
+        domain_.ymin -= std::max<double>(domain_.ymin - start_pos_(1), domain_.ymin - goal_pos_(1));
     }
     if((start_pos_(1) > domain_.ymax) || (goal_pos_(1) > domain_.ymax))
     {
-        domain_.ymax += std::max<double>(start_pos_(1) - domain_.ymax, goal_pos_(1) - domain_.ymax) + domain_factor;
+        domain_.ymax += std::max<double>(start_pos_(1) - domain_.ymax, goal_pos_(1) - domain_.ymax);
     }
+
+    domain_.xmin -= domain_factor;
+    domain_.xmax += domain_factor;
+
+    domain_.ymin -= domain_factor;
+    domain_.ymax += domain_factor;
 
     // Setting up the auxiliary grid
     LX_ = std::ceil((domain_.xmax - domain_.xmin)/dx_);
