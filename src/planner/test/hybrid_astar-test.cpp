@@ -50,18 +50,24 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << 0.0, 0.0, 0;
-    goal << 75, 75, M_PI;
+    start << -60.358219, 101.453217, 0;
+    goal << -145.307696, -3.867553, 0;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
     bool setup_success = HybridAStar->setup(start, goal);
+
+    std::cout << HybridAStar->get_dom_xmin() << ", " << HybridAStar->get_dom_xmax() << ", " << HybridAStar->get_dom_ymin() << ", " << HybridAStar->get_dom_ymax() << "\n";
+
     bool plan_success = HybridAStar->plan();
+
+    bool cleanup_success = HybridAStar->cleanup();
 
     ASSERT_TRUE(setup_success);
     ASSERT_TRUE(plan_success);
 
+/*
     // Test path construction
     std::cout << "\nResulting Path:\n";
 
@@ -86,4 +92,44 @@ TEST(HybridAStarTest, TestPlan)
     }
 
     std::cout << "\n";
+*/
+}
+
+TEST(HybridAStarTest, TestMultiPlan)
+{
+    double speed = 3.0;
+    double turn_radius = 8.0;
+    double step_length = 3.0;
+    double dt = 1.0;
+    
+    // Instanciate planner object
+    hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
+
+    Eigen::Vector3d start;
+    Eigen::Vector3d goal;
+
+    start << 0.0, 0.0, 0;
+    goal << -145.307696, -3.867553, 0;
+
+    bool setup_success = HybridAStar->setup(start, goal);
+    bool plan_success = HybridAStar->plan();
+    bool cleanup_success = HybridAStar->cleanup();
+
+    ASSERT_TRUE(setup_success);
+    ASSERT_TRUE(plan_success);
+    ASSERT_TRUE(cleanup_success);
+
+    Eigen::Vector3d start_new;
+    Eigen::Vector3d goal_new;
+
+    start_new << -50.358219, 101.453217, 0;
+    goal_new << -145.307696, -3.867553, 0;
+
+    setup_success = HybridAStar->setup(start_new, goal_new);
+    plan_success = HybridAStar->plan();
+    cleanup_success = HybridAStar->cleanup();
+
+    ASSERT_TRUE(setup_success);
+    ASSERT_TRUE(plan_success);
+    ASSERT_TRUE(cleanup_success);
 }
