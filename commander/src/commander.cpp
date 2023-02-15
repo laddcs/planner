@@ -213,8 +213,8 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
     {
         if(planning_)
         {
-            ROS_INFO("CMD: Start set to: (%3f, %3f, %3f)", current_pose_.position.x, current_pose_.position.y, current_pose_.position.z);
-            ROS_INFO("CMD: Goal set to: (%3f, %3f, %3f)", goal_pose_.position.x, goal_pose_.position.y, goal_pose_.position.z);
+            ROS_INFO("CMD: Start set to: (%3f, %3f, %3f)", current_pose_.position.x, current_pose_.position.y, extract_yaw(current_pose_.orientation));
+            ROS_INFO("CMD: Goal set to: (%3f, %3f, %3f)", goal_pose_.position.x, goal_pose_.position.y, extract_yaw(goal_pose_.orientation));
             ROS_INFO("CMD: Initializing trajectory planning!");
 
             // Call plan service here
