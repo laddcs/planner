@@ -1,7 +1,0 @@
-controller
-/home/bryce/gnc_ws/devel/.private/controller/cmake.lock /home/bryce/gnc_ws/devel/./cmake.lock
-/home/bryce/gnc_ws/devel/.private/controller/share/controller/cmake/controllerConfig-version.cmake /home/bryce/gnc_ws/devel/share/controller/cmake/controllerConfig-version.cmake
-/home/bryce/gnc_ws/devel/.private/controller/share/controller/cmake/controllerConfig.cmake /home/bryce/gnc_ws/devel/share/controller/cmake/controllerConfig.cmake
-/home/bryce/gnc_ws/devel/.private/controller/lib/libcontroller.so /home/bryce/gnc_ws/devel/lib/libcontroller.so
-/home/bryce/gnc_ws/devel/.private/controller/lib/pkgconfig/controller.pc /home/bryce/gnc_ws/devel/lib/pkgconfig/controller.pc
-/home/bryce/gnc_ws/devel/.private/controller/lib/controller/controller_node /home/bryce/gnc_ws/devel/lib/controller/controller_node
