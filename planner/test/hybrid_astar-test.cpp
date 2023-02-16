@@ -50,15 +50,17 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << 0.008156, 0.040982, 0;
-    goal << 32.704648, 89.640518, 0;
+    start << -182.362518, 89.800652, -0.002817;
+    goal << -3.578406, 190.220815, -0.002845;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
 
     bool setup_success = HybridAStar->setup(start, goal);
 
-    std::cout << HybridAStar->get_dom_xmin() << ", " << HybridAStar->get_dom_xmax() << ", " << HybridAStar->get_dom_ymin() << ", " << HybridAStar->get_dom_ymax() << "\n";
+//    std::cout << HybridAStar->get_dom_xmin() << ", " << HybridAStar->get_dom_xmax() << ", " << HybridAStar->get_dom_ymin() << ", " << HybridAStar->get_dom_ymax() << "\n";
+//    std::cout << HybridAStar->get_LX()*HybridAStar->get_LY()*HybridAStar->get_LTH() << "\n";
+//    std::cout << HybridAStar->get_start_idx() << "\n";
 
     bool plan_success = HybridAStar->plan();
 

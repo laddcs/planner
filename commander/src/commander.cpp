@@ -9,6 +9,7 @@ commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_n
     pose_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &commander::pose_cb, this);
 
     setpoint_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+    status_pub_ = nh_.advertise<mavros_msgs::CompanionProcessStatus>("mavros/companion_process/status", 1);
 
     plan_path_client_ = nh_.serviceClient<planner_msgs::PlanPath>("planner/plan_path");
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
@@ -28,6 +29,8 @@ commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_n
     tracking_ = false;
     track_complete_ = false;
     cmd_state_ = CMD_STATE::IDLE;
+    system_status_.component = mavros_msgs::CompanionProcessStatus::MAV_COMP_ID_OBSTACLE_AVOIDANCE;
+    system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_UNINIT;
 
     // Coordinate Transform
     earth = GeographicLib::Geocentric(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f());
@@ -76,6 +79,10 @@ void commander::waypoint_cb(const mavros_msgs::WaypointList::ConstPtr& msg)
             break;
         }
     }
+    if(!tracking_)
+    {
+        system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
+    }
 }
 
 void commander::pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -94,7 +101,7 @@ void commander::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
 void commander::cmdloop_cb(const ros::TimerEvent &event)
 {
     if(cmd_state_ == CMD_STATE::IDLE)
-    {
+    {        
         if((current_state_.mode == mavros_msgs::State::MODE_PX4_MISSION) && current_state_.armed)
         {
             // If there is no goal set call to update the goal
@@ -139,6 +146,8 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                     cmd_state_ = CMD_STATE::PLANNING;
                     has_goal_ = false;
                     planning_ = true;
+
+                    system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
                 } else
                 {
                     ROS_WARN("CMD: Warning! Home Not Set!");
@@ -168,6 +177,11 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
         {
             ROS_INFO("CMD: PX4 Autonomous mode enabled, abandoning planning.");
             cmd_state_ = CMD_STATE::IDLE;
+        } else if(!planning_ && !has_plan_)
+        {
+            // Set the companion state to emergency if the planner fails
+            system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_EMERGENCY;
+            cmd_state_ = CMD_STATE::IDLE;
         }
     }
 
@@ -183,6 +197,7 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                 ROS_INFO("CMD: Return to Idle.");
                 cmd_state_ = CMD_STATE::IDLE;
             }
+            system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
         } else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))
             && current_state_.armed)
         {
@@ -199,12 +214,16 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
 
     if(cmd_state_ == CMD_STATE::RC)
     {
+        // When the system is in RC let the companion process to critical
+        system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_CRITICAL;
         if(!(current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) && !(current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION))
         {
             ROS_INFO("CMD: Entering autonomous mode.");
             cmd_state_ = CMD_STATE::IDLE;
         }
     }
+
+    status_pub_.publish(system_status_);
 }
 
 void commander::ctlloop_cb(const ros::TimerEvent &event)

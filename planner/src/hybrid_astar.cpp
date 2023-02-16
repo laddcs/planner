@@ -31,10 +31,15 @@ int hybrid_astar::get_idx(Eigen::Vector3d pos)
     {
         return -1;
     }
+    // Make sure 0 <= yaw < 2*pi
+    if(pos(2) < 0)
+    {
+        pos(2) = std::fmod(pos(2) + 2*M_PI, 2*M_PI);
+    }
 
-    const int x_idx = std::round(LX_*(pos(0) - domain_.xmin)/(domain_.xmax - domain_.xmin));
-    const int y_idx = std::round(LY_*(pos(1) - domain_.ymin)/(domain_.ymax - domain_.ymin));
-    const int th_idx = std::round(LTH_*pos(2)/(2*M_PI));
+    const int x_idx = std::floor(LX_*(pos(0) - domain_.xmin)/(domain_.xmax - domain_.xmin));
+    const int y_idx = std::floor(LY_*(pos(1) - domain_.ymin)/(domain_.ymax - domain_.ymin));
+    const int th_idx = std::floor(LTH_*pos(2)/(2*M_PI));
     
     return th_idx*LX_*LY_ + y_idx*LX_ + x_idx;
 }
