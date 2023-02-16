@@ -15,6 +15,7 @@
 #include <mavros_msgs/WaypointList.h>
 #include <mavros_msgs/WaypointPull.h>
 #include <mavros_msgs/CommandCode.h>
+#include <mavros_msgs/CompanionProcessStatus.h>
 
 #include <planner_msgs/SetController.h>
 #include <planner_msgs/SetCommander.h>
@@ -38,6 +39,7 @@ class commander
         ros::Subscriber pose_sub_;
 
         ros::Publisher setpoint_pub_;
+        ros::Publisher status_pub_;
 
         ros::ServiceClient plan_path_client_;
         ros::ServiceClient set_mode_client_;
@@ -48,9 +50,9 @@ class commander
 
         mavros_msgs::HomePosition current_home_;
         mavros_msgs::State current_state_;
-        mavros_msgs::Waypoint current_mission_;
 
         // Planning Info
+        mavros_msgs::Waypoint current_mission_;
         geometry_msgs::Pose goal_pose_;
         geometry_msgs::Pose current_pose_;
 
@@ -71,6 +73,7 @@ class commander
         bool tracking_; // Internal to controller process
         bool track_complete_;
         CMD_STATE cmd_state_;
+        mavros_msgs::CompanionProcessStatus system_status_;
 
         // Coordinate Transform
         Eigen::Vector3d ecef_origin_;
