@@ -21,8 +21,33 @@ wstool init
 ```
 
 #### Clone this repository
-
 ```bash
 cd ~/catkin_ws/src
 git clone https://github.com/laddcs/planner.git
 ```
+
+#### Build Packages
+```bash
+cd ~/catkin_ws
+catkin build
+source ~/catkin_ws/devel/setup.bash
+```
+
+#### Test Planner Algorithms
+```bash
+cd ~/catkin_ws
+catkin test planner
+```
+
+### Running SIL Simulation
+Build and run the simulation.
+```bash
+cd <Firmware_directory>
+make px4_sitl_default gazebo
+```
+In a new terminal run
+```bash
+roslaunch planner planner_sil.launch
+```
+
+
