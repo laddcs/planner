@@ -107,12 +107,9 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
             // If there is no goal set call to update the goal
             if(!has_goal_)
             {
-                ROS_INFO("CMD: Set new guidance goal!");
                 mavros_msgs::WaypointPull waypoint_pull;
-                if(!waypoint_pull_client_.call(waypoint_pull) || !waypoint_pull.response.success)
-                {
-                    ROS_WARN("CMD: Error Pulling Waypoints!");
-                }
+                if(!waypoint_pull_client_.call(waypoint_pull) || !waypoint_pull.response.success) ROS_WARN("CMD: Error Pulling Waypoints!");
+                else ROS_INFO("CMD: Pulling new guidance goal!");
             }
 
             // Overide the mission and transfer back to hold
@@ -123,7 +120,6 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                 // If the transform is valid, and a goal exists -> start the planner
                 if(home_set_ && has_goal_)
                 {
-
                     // Transform from QGC geodetic frame to mavros NED frame
                     Eigen::Vector3d map_point;
                     Eigen::Vector3d local_ecef;
@@ -137,11 +133,13 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                     goal_point = mavros::ftf::transform_frame_ecef_enu(local_ecef, map_origen_);
 
                     // Set the Start Pose to the current pose, set the Goal Pose to the waypoint from QGC
-                    // Set the goal yaw to the current yaw !! This will get more complicated as POI are introduced !!
                     goal_pose_.position.x = goal_point(0);
                     goal_pose_.position.y = goal_point(1);
                     goal_pose_.position.z = goal_point(2);
-                    goal_pose_.orientation = current_pose_.orientation;
+
+                    // If a yaw us avialable in waypoint info then set the goal yaw to it, otherwise set it to current yaw
+                    if(!std::isnan(current_mission_.param4)) goal_pose_.orientation = euler2Quat(0, 0, current_mission_.param4*2*M_PI/180);
+                    else goal_pose_.orientation = current_pose_.orientation;
 
                     cmd_state_ = CMD_STATE::PLANNING;
                     has_goal_ = false;
@@ -150,7 +148,8 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                     system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
                 } else
                 {
-                    ROS_WARN("CMD: Warning! Home Not Set!");
+                    if(!home_set_) ROS_WARN("CMD: Warning! Home Not Set!");
+                    else if(!has_goal_) ROS_WARN("CMD: Warning! No Guidance Goal!");
                 }
             }
         } else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))
