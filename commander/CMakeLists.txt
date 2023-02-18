@@ -42,6 +42,12 @@ add_executable(commander_node
   src/commander_node.cpp
 )
 
+add_executable(control_test_node
+  src/control_test_node.cpp
+)
+
 add_dependencies(commander_node commander ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(control_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(commander_node commander ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(control_test_node ${PROJECT_NAME} ${catkin_LIBRARIES})
