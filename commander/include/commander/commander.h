@@ -68,6 +68,7 @@ class commander
         // State Flags
         bool home_set_;
         bool has_goal_;
+        bool transfer_set_; // Flag for setting setpoint for offboard transition
         bool planning_; // Internal to controller process
         bool has_plan_;
         bool tracking_; // Internal to controller process

@@ -50,8 +50,8 @@ TEST(HybridAStarTest, TestPlan)
     Eigen::Vector3d start;
     Eigen::Vector3d goal;
 
-    start << -182.362518, 89.800652, -0.002817;
-    goal << -3.578406, 190.220815, -0.002845;
+    start << -51.759594, 85.086464, 0.004197;
+    goal << 67.348585, 140.153133, 0.005380;
 
     // Instanciate planner object
     hybrid_astar* HybridAStar = new hybrid_astar(speed, turn_radius, dt, step_length);
@@ -69,7 +69,7 @@ TEST(HybridAStarTest, TestPlan)
     ASSERT_TRUE(setup_success);
     ASSERT_TRUE(plan_success);
 
-/*
+
     // Test path construction
     std::cout << "\nResulting Path:\n";
 
@@ -94,7 +94,6 @@ TEST(HybridAStarTest, TestPlan)
     }
 
     std::cout << "\n";
-*/
 }
 
 TEST(HybridAStarTest, TestMultiPlan)

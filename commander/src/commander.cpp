@@ -3,7 +3,7 @@
 commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_nh) : nh_(nh), control_nh_(control_nh)
 {
     state_sub_ = nh_.subscribe("mavros/state", 1, &commander::state_cb, this);
-    setpoint_sub_ = nh_.subscribe("mavros/setpoint_raw/target_local", 1, &commander::setpoint_cb, this);
+    // setpoint_sub_ = nh_.subscribe("mavros/setpoint_raw/target_local", 1, &commander::setpoint_cb, this);
     waypoint_sub_ = nh_.subscribe("mavros/mission/waypoints", 1, &commander::waypoint_cb, this);
     home_sub_ = nh_.subscribe("mavros/home_position/home", 1, &commander::home_cb, this);
     pose_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &commander::pose_cb, this);
@@ -24,6 +24,7 @@ commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_n
     // State Flags
     home_set_ = false;
     has_goal_ = false;
+    transfer_set_ = false;
     planning_ = false;
     has_plan_ = false;
     tracking_ = false;
@@ -88,6 +89,13 @@ void commander::waypoint_cb(const mavros_msgs::WaypointList::ConstPtr& msg)
 void commander::pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_pose_ = (*msg).pose;
+
+    if(!transfer_set_)
+    {
+        current_px4_setpoint_.pose = (*msg).pose;
+        current_px4_setpoint_.header.stamp = ros::Time::now();
+        current_px4_setpoint_.header.frame_id = "map";
+    }
 }
 
 void commander::setpoint_cb(const mavros_msgs::PositionTarget::ConstPtr& msg)
@@ -137,12 +145,13 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
                     goal_pose_.position.y = goal_point(1);
                     goal_pose_.position.z = goal_point(2);
 
-                    // If a yaw us avialable in waypoint info then set the goal yaw to it, otherwise set it to current yaw
+                    // If a yaw is avialable in waypoint info then set the goal yaw to it, otherwise set it to current yaw
                     if(!std::isnan(current_mission_.param4)) goal_pose_.orientation = euler2Quat(0, 0, current_mission_.param4*2*M_PI/180);
                     else goal_pose_.orientation = current_pose_.orientation;
 
                     cmd_state_ = CMD_STATE::PLANNING;
                     has_goal_ = false;
+                    transfer_set_ = true; // Set the target setpoint to the current pose
                     planning_ = true;
 
                     system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
@@ -171,15 +180,18 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
             && current_state_.armed)
         {
             ROS_INFO("CMD: RC control enabled, abandoning planning.");
+            transfer_set_ = false;
             cmd_state_ = CMD_STATE::RC;
         } else if((current_state_.mode == mavros_msgs::State::MODE_PX4_RTL) || (current_state_.mode == mavros_msgs::State::MODE_PX4_LAND))
         {
             ROS_INFO("CMD: PX4 Autonomous mode enabled, abandoning planning.");
+            transfer_set_ = false;
             cmd_state_ = CMD_STATE::IDLE;
         } else if(!planning_ && !has_plan_)
         {
             // Set the companion state to emergency if the planner fails
             system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_EMERGENCY;
+            transfer_set_ = false;
             cmd_state_ = CMD_STATE::IDLE;
         }
     }
@@ -189,6 +201,7 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
         if(track_complete_)
         {
             track_complete_ = false;
+            transfer_set_ = false;
             mavros_msgs::SetMode plan_set_mode;
             plan_set_mode.request.custom_mode = "AUTO.LOITER";
             if(set_mode_client_.call(plan_set_mode) && plan_set_mode.response.mode_sent)
@@ -202,11 +215,13 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
         {
             ROS_INFO("CMD: RC control enabled, abandoning tracking.");
             tracking_ = false;
+            transfer_set_ = false;
             cmd_state_ = CMD_STATE::RC;
         } else if((current_state_.mode == mavros_msgs::State::MODE_PX4_RTL) || (current_state_.mode == mavros_msgs::State::MODE_PX4_LAND))
         {
             ROS_INFO("CMD: PX4 Autonomous mode enabled, abandoning tracking.");
             tracking_ = false;
+            transfer_set_ = false;
             cmd_state_ = CMD_STATE::IDLE;
         }
     }
@@ -280,12 +295,12 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
 
             if(!tracking_)
             {
-                if(((current_pose_.position.z - trajectory_[0].pos.position.z) > 0.1))
+                if((std::abs(current_pose_.position.z - trajectory_[0].pos.position.z) > 0.5))
                 {
                     setpoint_pub_.publish(current_offboard_setpoint_);
-                    return;
                 } else
                 {
+                    ROS_INFO("Initializing Track!");
                     tracking_ = true;
                     track_start_ = ros::Time::now();
                 }
@@ -294,19 +309,21 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
 
             if(track_idx_ < trajectory_.size())
             {
-                if((ros::Time::now() - track_start_) > (trajectory_[track_idx_].target_time.data))
+                if(((ros::Time::now() - track_start_) > trajectory_[track_idx_].target_time.data) && tracking_)
                 {
-                    track_idx_ ++;
+                    ROS_INFO("CMD: on idx: %i", track_idx_);
                     current_offboard_setpoint_.pose.position = trajectory_[track_idx_].pos.position;
                     current_offboard_setpoint_.pose.orientation = trajectory_[track_idx_].pos.orientation;
                     current_offboard_setpoint_.header.stamp = ros::Time::now();
                     current_offboard_setpoint_.header.frame_id = "map";
+                    track_idx_ ++;
                 }
                 setpoint_pub_.publish(current_offboard_setpoint_);
             } else
             {
                 tracking_ = false;
                 track_complete_ = true;
+                current_px4_setpoint_ = current_offboard_setpoint_; // Set Pixhawk setpoint to last point in the trajectory
             }
         }
 
