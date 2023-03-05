@@ -1,0 +1,28 @@
+<launch>
+    <arg name="fcu_url" default="/dev/ttyACM0"/>
+    <arg name="gcs_url" default=""/>
+    <arg name="mission/pull_after_gcs" default="true"/>
+
+    <arg name="planner_type" value="hybrid-astar"/>
+
+    <!-- Parameters for Hybrid-A* Search -->
+    <arg name="speed" default="3.0"/>
+    <arg name="turn_radius" default="8.0"/>
+    <arg name="dt" default="1.0"/>
+
+    <include file="$(find mavros)/launch/px4.launch">
+        <arg name="fcu_url" value="$(arg fcu_url)" />
+        <arg name="gcs_url" value="$(arg gcs_url)" />
+    </include>
+
+    <node pkg="commander" type="commander_node" name="commander" output="screen"/>
+
+    <node pkg="planner" type="planner_node" name="planner" output="screen">
+        <param name="planner_type" type="string" value="$(arg planner_type)"/>
+
+        <!-- Parameters for Hybrid-A* Search -->
+        <param name="speed" value="$(arg speed)"/>
+        <param name="turn_radius" value="$(arg turn_radius)"/>
+        <param name="dt" value="$(arg dt)"/>
+    </node>
+</launch>
