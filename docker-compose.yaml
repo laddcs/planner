@@ -1,0 +1,31 @@
+services:
+  # Base image containing dependencies.
+  base:
+    image: planner-ros:base
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: base
+    # Interactive shell
+    stdin_open: true
+    tty: true
+    environment:
+    - DISPLAY=${DISPLAY}
+    - QT_X11_NO_MITSHM=1
+    volumes:
+    # Mount the source code
+    - ./commander:/overlay_ws/src/planner/commander:rw
+    - ./planner:/overlay_ws/src/planner/planner:rw
+    - ./planner_msgs:/overlay_ws/src/planner/planner_msgs:rw
+    # Allows graphical programs in the container.
+    - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: sleep infinity
+
+  overlay:
+    extends: base
+    image: planner-ros:overlay
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: overlay
+    command: sleep infinity

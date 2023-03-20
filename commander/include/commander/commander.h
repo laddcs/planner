@@ -57,7 +57,9 @@ class commander
         geometry_msgs::Pose current_pose_;
 
         // Tracking Info
-        ros::Time last_request;
+        ros::Time last_offboard_request_;
+        ros::Time last_waypoint_request_;
+        ros::Time last_hold_request_;
         ros::Time track_start_;
 
         int track_idx_;
@@ -66,6 +68,7 @@ class commander
         std::vector<planner_msgs::PathSetpoint> trajectory_;
 
         // State Flags
+        bool guidance_;
         bool home_set_;
         bool has_goal_;
         bool transfer_set_; // Flag for setting setpoint for offboard transition
