@@ -19,9 +19,12 @@ commander::commander(const ros::NodeHandle &nh, const ros::NodeHandle &control_n
     ctlloop_timer_ = control_nh_.createTimer(ros::Duration(0.1), &commander::ctlloop_cb, this);
 
     // Tracking Info
-    last_request = ros::Time::now();
+    last_offboard_request_ = ros::Time::now();
+    last_waypoint_request_ = ros::Time::now();
+    last_hold_request_ = ros::Time::now();
 
     // State Flags
+    guidance_ = false;
     home_set_ = false;
     has_goal_ = false;
     transfer_set_ = false;
@@ -80,6 +83,7 @@ void commander::waypoint_cb(const mavros_msgs::WaypointList::ConstPtr& msg)
             break;
         }
     }
+
     if(!tracking_)
     {
         system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
@@ -112,56 +116,69 @@ void commander::cmdloop_cb(const ros::TimerEvent &event)
     {        
         if((current_state_.mode == mavros_msgs::State::MODE_PX4_MISSION) && current_state_.armed)
         {
-            // If there is no goal set call to update the goal
-            if(!has_goal_)
-            {
-                mavros_msgs::WaypointPull waypoint_pull;
-                if(!waypoint_pull_client_.call(waypoint_pull) || !waypoint_pull.response.success) ROS_WARN("CMD: Error Pulling Waypoints!");
-                else ROS_INFO("CMD: Pulling new guidance goal!");
-            }
-
             // Overide the mission and transfer back to hold
-            mavros_msgs::SetMode plan_set_mode;
-            plan_set_mode.request.custom_mode = "AUTO.LOITER";
-            if(set_mode_client_.call(plan_set_mode) && plan_set_mode.response.mode_sent)
+            if((ros::Time::now() - last_hold_request_) > ros::Duration(3.0))
             {
-                // If the transform is valid, and a goal exists -> start the planner
-                if(home_set_ && has_goal_)
+                last_hold_request_ = ros::Time::now();
+                mavros_msgs::SetMode plan_set_mode;
+                plan_set_mode.request.custom_mode = "AUTO.LOITER";
+            
+                if(set_mode_client_.call(plan_set_mode) && plan_set_mode.response.mode_sent)
                 {
-                    // Transform from QGC geodetic frame to mavros NED frame
-                    Eigen::Vector3d map_point;
-                    Eigen::Vector3d local_ecef;
-                    Eigen::Vector3d goal_point;
-
-                    earth.Forward(current_mission_.x_lat, current_mission_.y_long, current_mission_.z_alt + current_home_.geo.altitude, 
-                        map_point(0), map_point(1), map_point(2));
-
-                    local_ecef = map_point - ecef_origin_;
-
-                    goal_point = mavros::ftf::transform_frame_ecef_enu(local_ecef, map_origen_);
-
-                    // Set the Start Pose to the current pose, set the Goal Pose to the waypoint from QGC
-                    goal_pose_.position.x = goal_point(0);
-                    goal_pose_.position.y = goal_point(1);
-                    goal_pose_.position.z = goal_point(2);
-
-                    // If a yaw is avialable in waypoint info then set the goal yaw to it, otherwise set it to current yaw
-                    if(!std::isnan(current_mission_.param4)) goal_pose_.orientation = euler2Quat(0, 0, current_mission_.param4*2*M_PI/180);
-                    else goal_pose_.orientation = current_pose_.orientation;
-
-                    cmd_state_ = CMD_STATE::PLANNING;
-                    has_goal_ = false;
-                    transfer_set_ = true; // Set the target setpoint to the current pose
-                    planning_ = true;
-
-                    system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
-                } else
-                {
-                    if(!home_set_) ROS_WARN("CMD: Warning! Home Not Set!");
-                    else if(!has_goal_) ROS_WARN("CMD: Warning! No Guidance Goal!");
+                    ROS_INFO("CMD: Initializing Guidance!");
+                    guidance_ = true;
                 }
             }
-        } else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))
+        } else if((current_state_.mode == "AUTO.LOITER") && guidance_)
+        {
+            // If the home is set and the goal is valid transform it to local coords and transfer to planning mode
+            if(home_set_ && has_goal_)
+            {
+                // Transform from QGC geodetic frame to mavros NED frame
+                Eigen::Vector3d map_point;
+                Eigen::Vector3d local_ecef;
+                Eigen::Vector3d goal_point;
+
+                earth.Forward(current_mission_.x_lat, current_mission_.y_long, current_mission_.z_alt + current_home_.geo.altitude, 
+                    map_point(0), map_point(1), map_point(2));
+
+                local_ecef = map_point - ecef_origin_;
+
+                goal_point = mavros::ftf::transform_frame_ecef_enu(local_ecef, map_origen_);
+
+                // Set the Start Pose to the current pose, set the Goal Pose to the waypoint from QGC
+                goal_pose_.position.x = goal_point(0);
+                goal_pose_.position.y = goal_point(1);
+                goal_pose_.position.z = goal_point(2);
+
+                // If a yaw is avialable in waypoint info then set the goal yaw to it, otherwise set it to current yaw
+                if(!std::isnan(current_mission_.param4)) goal_pose_.orientation = euler2Quat(0, 0, current_mission_.param4*2*M_PI/180);
+                else goal_pose_.orientation = current_pose_.orientation;
+
+                cmd_state_ = CMD_STATE::PLANNING;
+                guidance_ = false;
+                has_goal_ = false;
+                transfer_set_ = true; // Set the target setpoint to the current pose
+                planning_ = true;
+
+                system_status_.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
+            } else
+            {
+                if(!home_set_) ROS_WARN("CMD: Warning! Home Not Set!");
+                // If there is no goal set call to update the goal
+                if(!has_goal_)
+                {
+                    if((ros::Time::now() - last_waypoint_request_) > ros::Duration(3.0))
+                    {
+                        last_waypoint_request_ = ros::Time::now();
+                        mavros_msgs::WaypointPull waypoint_pull;
+                        if(!waypoint_pull_client_.call(waypoint_pull) || !waypoint_pull.response.success) ROS_WARN("CMD: Error Pulling Waypoints!");
+                        else ROS_INFO("CMD: Pulling new guidance goal!");
+                    }                
+                }
+            }
+
+        }else if(((current_state_.mode == mavros_msgs::State::MODE_PX4_MANUAL) || ((current_state_.mode == mavros_msgs::State::MODE_PX4_POSITION)))
             && current_state_.armed)
         {
             ROS_INFO("CMD: RC control enabled.");
@@ -250,6 +267,8 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
             ROS_INFO("CMD: Goal set to: (%3f, %3f, %3f)", goal_pose_.position.x, goal_pose_.position.y, extract_yaw(goal_pose_.orientation));
             ROS_INFO("CMD: Initializing trajectory planning!");
 
+            track_idx_ = 0;
+
             // Call plan service here
             planner_msgs::PlanPath plan;
             plan.request.start = current_pose_;
@@ -265,7 +284,6 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
 
                 has_plan_ = true;
                 planning_ = false;
-                track_idx_ = 0;
             } else 
             {
                 ROS_WARN("CMD: Planning Failure!");
@@ -277,33 +295,21 @@ void commander::ctlloop_cb(const ros::TimerEvent &event)
         {
             if((current_state_.mode != mavros_msgs::State::MODE_PX4_OFFBOARD))
             {
-                if(((ros::Time::now() - last_request) > ros::Duration(5.0)))
+                if(((ros::Time::now() - last_offboard_request_) > ros::Duration(5.0)))
                 {
                     mavros_msgs::SetMode offb_set_mode;
                     offb_set_mode.request.custom_mode = "OFFBOARD";
 
-                    last_request = ros::Time::now();
+                    last_offboard_request_ = ros::Time::now();
 
                     if(set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent)
                     {
                         ROS_INFO("CMD: Offboard enabled!");
+                        tracking_ = true;
+                        track_start_ = ros::Time::now();
                     }
                 }
                 setpoint_pub_.publish(current_px4_setpoint_);
-                return;
-            }
-
-            if(!tracking_)
-            {
-                if((std::abs(current_pose_.position.z - trajectory_[0].pos.position.z) > 0.5))
-                {
-                    setpoint_pub_.publish(current_offboard_setpoint_);
-                } else
-                {
-                    ROS_INFO("Initializing Track!");
-                    tracking_ = true;
-                    track_start_ = ros::Time::now();
-                }
                 return;
             }
 
